@@ -36,3 +36,59 @@
     </tr>
   </tbody>
 </table>
+
+---
+## Feature
+มีทั้งหมด 12 Feature
+### 🏪 Restaurant
+POST /restaurant (สร้างร้านอาหาร)
+
+GET /restaurant (ดูร้านทั้งหมด)
+
+GET /restaurant/{id} (ดูข้อมูลของร้านอาหาร)
+
+PUT /restaurant/order/confirm (ยืนยันออเดอร์)
+
+### 🍽 Menu
+POST /restaurant/{id}/menu (เพิ่มเมนู)
+
+GET /restaurant/{id}/menu (ดูเมนู)
+
+PUT /restaurant/menu/stock (อัปเดตจำนวนสินค้า)
+
+PUT/restaurant/{id}/menu/status (สถานะเมนู) 
+
+### 🧾 Order
+POST /order (สร้างคำสั่งซื้อ) 
+
+PUT /order/cancel (ลูกค้ายกเลิกออเดอร์) 
+
+GET /order/{id} (ดูรายละเอียดออเดอร์) 
+
+PUT / order / {id} / status (อัปเดตสถานะออเดอร์ เช่น รับออเดอร์ กำลังทำ ทำเสร็จ กำลังจัดส่ง )
+
+### 🛵 Rider
+POST /order/{id}/assign-rider (มอบหมายไรเดอร์) 
+
+---
+### Responsibility
+
+นางสาวธวัลหทัย เทียมทอง
+- 
+-
+
+## นางสาวกนกพร พรรณปัญญา
+- POST /restaurant (สร้างร้านอาหาร)
+- GET /restaurant (ดูร้านทั้งหมด)
+  
+นายกุลเศรษฐ์ เนตรเพชร
+-
+-
+
+นางสาวชลธาร ศิลปาจารย์
+-
+-
+
+นายธีรัตม์ ศรีสุโข
+-
+-
