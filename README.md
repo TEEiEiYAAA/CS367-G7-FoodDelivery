@@ -39,7 +39,7 @@
 
 ---
 ## Feature
-มีทั้งหมด 12 Feature
+มีทั้งหมด 13 Features
 ### 🏪 Restaurant
 POST /restaurant (สร้างร้านอาหาร)
 
@@ -74,8 +74,8 @@ POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
 ### Responsibility
 
 ## นางสาวธวัลหทัย เทียมทอง
-- 
--
+- POST /order (สร้างคำสั่งซื้อ) 
+- PUT /order/cancel (ลูกค้ายกเลิกออเดอร์)  
 
 ## นางสาวกนกพร พรรณปัญญา
 - POST /restaurant (สร้างร้านอาหาร)
@@ -91,5 +91,4 @@ POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
 
 ## นายธีรัตม์ ศรีสุโข
 - POST /restaurant/{id}/menu (เพิ่มเมนู)
-
 - GET /restaurant/{id}/menu (ดูเมนู)
