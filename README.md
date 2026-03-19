@@ -82,8 +82,8 @@ POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
 - GET /restaurant (ดูร้านทั้งหมด)
   
 ## นายกุลเศรษฐ์ เนตรเพชร
--
--
+- GET /order/{id} (ดูรายละเอียดออเดอร์)
+- POST /order/{id}/assign-rider (มอบหมายไรเดอร์) 
 
 ## นางสาวชลธาร ศิลปาจารย์
 - GET /restaurant/{id} (ดูข้อมูลของร้านอาหาร)
