@@ -86,8 +86,8 @@ POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
 -
 
 ## นางสาวชลธาร ศิลปาจารย์
--
--
+- GET /restaurant/{id} (ดูข้อมูลของร้านอาหาร)
+- PUT /restaurant/order/confirm (ยืนยันออเดอร์)
 
 ## นายธีรัตม์ ศรีสุโข
 - POST /restaurant/{id}/menu (เพิ่มเมนู)
