@@ -54,10 +54,6 @@ POST /restaurant/{id}/menu (เพิ่มเมนู)
 
 GET /restaurant/{id}/menu (ดูเมนู)
 
-PUT /restaurant/menu/stock (อัปเดตจำนวนสินค้า)
-
-PUT/restaurant/{id}/menu/status (สถานะเมนู) 
-
 ### 🧾 Order
 POST /order (สร้างคำสั่งซื้อ) 
 
