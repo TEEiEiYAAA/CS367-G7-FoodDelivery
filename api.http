@@ -1,0 +1,95 @@
+### CS367 Food Delivery API Test (11 Features)
+
+### ===========================
+### 🏪 Restaurant
+### ===========================
+
+### สร้างร้านอาหาร
+POST http://localhost:8080/restaurant
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "name": "KFC",
+  "address": "Bangkok"
+}
+
+### ดูร้านทั้งหมด
+GET http://localhost:8080/restaurant
+
+### ดูข้อมูลของร้านอาหาร
+GET http://localhost:8080/restaurant/1
+
+### ยืนยันออเดอร์
+PUT http://localhost:8080/restaurant/order/confirm
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "order_id": 1
+}
+
+### ===========================
+### 🍽 Menu
+### ===========================
+
+### เพิ่มเมนู
+POST http://localhost:8080/restaurant/1/menu
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "name": "Fried Chicken",
+  "price": 45.50
+}
+
+### ดูเมนู
+GET http://localhost:8080/restaurant/1/menu
+
+### ===========================
+### 🧾 Order
+### ===========================
+
+### สร้างคำสั่งซื้อ
+POST http://localhost:8080/order
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "restaurant_id": 1,
+  "items": []
+}
+
+### ลูกค้ายกเลิกออเดอร์
+PUT http://localhost:8080/order/cancel
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "order_id": 1
+}
+
+### ดูรายละเอียดออเดอร์
+GET http://localhost:8080/order/1
+
+### อัปเดตสถานะออเดอร์
+PUT http://localhost:8080/order/1/status
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "status": "กำลังทำ"
+}
+
+### ===========================
+### 🛵 Rider
+### ===========================
+
+### มอบหมายไรเดอร์
+POST http://localhost:8080/order/1/assign-rider
+Authorization: Bearer <YOUR_TOKEN_HERE>
+Content-Type: application/json
+
+{
+  "rider_id": 1
+}

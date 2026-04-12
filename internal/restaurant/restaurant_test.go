@@ -1,13 +1,13 @@
-package menu
+package restaurant
 
 import (
 	"testing"
 )
 
-func TestGetMenuByRestaurant(t *testing.T) {
+func TestGetRestaurants(t *testing.T) {
 	// TODO: Setup mock repository and test service
 }
 
-func TestCreateMenu(t *testing.T) {
+func TestCreateRestaurant(t *testing.T) {
 	// TODO: Setup mock repository and test service
 }
