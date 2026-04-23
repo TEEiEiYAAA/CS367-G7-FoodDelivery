@@ -5,11 +5,12 @@ import (
 	"errors"
 )
 
+var ErrInvalidRestaurant = errors.New("invalid restaurant data")
 var ErrNotFound = errors.New("restaurant not found")
 
 type Service interface {
-	CreateRestaurant()
-	GetRestaurants()
+	CreateRestaurant(r Restaurant) (Restaurant, error)
+	GetRestaurants() ([]Restaurant, error)
 	GetRestaurantByID(id int) (*Restaurant, error)
 	ConfirmOrder()
 }
@@ -22,8 +23,17 @@ func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) CreateRestaurant() {}
-func (s *service) GetRestaurants()   {}
+func (s *service) CreateRestaurant(r Restaurant) (Restaurant, error) {
+	if !r.IsValid() {
+		return Restaurant{}, ErrInvalidRestaurant
+	}
+	return s.repo.CreateRestaurant(r)
+}
+
+func (s *service) GetRestaurants() ([]Restaurant, error) {
+	return s.repo.GetRestaurants()
+}
+
 func (s *service) GetRestaurantByID(id int) (*Restaurant, error) {
 	rest, err := s.repo.GetRestaurantByID(id)
 	if err != nil {
@@ -34,4 +44,5 @@ func (s *service) GetRestaurantByID(id int) (*Restaurant, error) {
 	}
 	return rest, nil
 }
-func (s *service) ConfirmOrder() {}
+
+func (s *service) ConfirmOrder()      {}
