@@ -7,12 +7,13 @@ import (
 
 var ErrInvalidRestaurant = errors.New("invalid restaurant data")
 var ErrNotFound = errors.New("restaurant not found")
+var ErrOrderNotFound = errors.New("order not found or not authorized")
 
 type Service interface {
 	CreateRestaurant(r Restaurant) (Restaurant, error)
 	GetRestaurants() ([]Restaurant, error)
 	GetRestaurantByID(id int) (*Restaurant, error)
-	ConfirmOrder()
+	ConfirmOrder(orderID int, ownerUsername string) error
 }
 
 type service struct {
@@ -45,4 +46,6 @@ func (s *service) GetRestaurantByID(id int) (*Restaurant, error) {
 	return rest, nil
 }
 
-func (s *service) ConfirmOrder()      {}
+func (s *service) ConfirmOrder(orderID int, ownerUsername string) error {
+	return s.repo.ConfirmOrder(orderID, ownerUsername)
+}

@@ -1,33 +1,35 @@
 package restaurant
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 )
 
-// --- mock repository ---------------------------------------------------------
-
-// mockRepo implements Repository for tests. Each test injects the behaviour it
-// needs by setting the corresponding function field.
+// mock repository
 type mockRepo struct {
-	createFn func(Restaurant) (Restaurant, error)
-	listFn   func() ([]Restaurant, error)
+	createFn  func(Restaurant) (Restaurant, error)
+	listFn    func() ([]Restaurant, error)
+	getByIDFn func(int) (*Restaurant, error)
+	confirmFn func(int, string) error
 }
 
-func (m *mockRepo) CreateRestaurant(r Restaurant) (Restaurant, error) {
-	return m.createFn(r)
+func (m *mockRepo) CreateRestaurant(r Restaurant) (Restaurant, error) { return m.createFn(r) }
+func (m *mockRepo) GetRestaurants() ([]Restaurant, error)             { return m.listFn() }
+func (m *mockRepo) GetRestaurantByID(id int) (*Restaurant, error) {
+	if m.getByIDFn != nil {
+		return m.getByIDFn(id)
+	}
+	return nil, nil
+}
+func (m *mockRepo) ConfirmOrder(orderID int, ownerUsername string) error {
+	if m.confirmFn != nil {
+		return m.confirmFn(orderID, ownerUsername)
+	}
+	return nil
 }
 
-func (m *mockRepo) GetRestaurants() ([]Restaurant, error) {
-	return m.listFn()
-}
-
-// Stubs for teammate-owned methods — not exercised in these tests.
-func (m *mockRepo) GetRestaurantByID() {}
-func (m *mockRepo) ConfirmOrder()      {}
-
-// --- Restaurant.IsValid ------------------------------------------------------
-
+// Restaurant.IsValid
 func TestRestaurant_IsValid(t *testing.T) {
 	tests := []struct {
 		name string
@@ -48,8 +50,7 @@ func TestRestaurant_IsValid(t *testing.T) {
 	}
 }
 
-// --- Service.CreateRestaurant ------------------------------------------------
-
+// Service.CreateRestaurant
 func TestCreateRestaurant_Success(t *testing.T) {
 	repo := &mockRepo{
 		createFn: func(r Restaurant) (Restaurant, error) {
@@ -114,8 +115,7 @@ func TestCreateRestaurant_RepoErrorIsPropagated(t *testing.T) {
 	}
 }
 
-// --- Service.GetRestaurants --------------------------------------------------
-
+// Service.GetRestaurants
 func TestGetRestaurants_ReturnsList(t *testing.T) {
 	want := []Restaurant{
 		{ID: 1, Name: "KFC", Address: "Bangkok", OwnerUsername: "alice"},
@@ -174,5 +174,71 @@ func TestGetRestaurants_RepoErrorIsPropagated(t *testing.T) {
 	_, err := svc.GetRestaurants()
 	if !errors.Is(err, dbErr) {
 		t.Errorf("got %v, want %v", err, dbErr)
+	}
+}
+
+// Service.GetRestaurantByID
+func TestGetRestaurantByID_Success(t *testing.T) {
+	want := &Restaurant{ID: 1, Name: "KFC", Address: "Bangkok", OwnerUsername: "alice"}
+	repo := &mockRepo{
+		getByIDFn: func(id int) (*Restaurant, error) { return want, nil },
+	}
+	svc := NewService(repo)
+
+	got, err := svc.GetRestaurantByID(1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if *got != *want {
+		t.Errorf("got %+v, want %+v", *got, *want)
+	}
+}
+
+func TestGetRestaurantByID_NotFound(t *testing.T) {
+	repo := &mockRepo{
+		getByIDFn: func(id int) (*Restaurant, error) { return nil, sql.ErrNoRows },
+	}
+	svc := NewService(repo)
+
+	_, err := svc.GetRestaurantByID(99)
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("got %v, want ErrNotFound", err)
+	}
+}
+
+func TestGetRestaurantByID_RepoErrorIsPropagated(t *testing.T) {
+	dbErr := errors.New("db down")
+	repo := &mockRepo{
+		getByIDFn: func(id int) (*Restaurant, error) { return nil, dbErr },
+	}
+	svc := NewService(repo)
+
+	_, err := svc.GetRestaurantByID(1)
+	if !errors.Is(err, dbErr) {
+		t.Errorf("got %v, want %v", err, dbErr)
+	}
+}
+
+// Service.ConfirmOrder
+func TestConfirmOrder_Success(t *testing.T) {
+	repo := &mockRepo{
+		confirmFn: func(orderID int, ownerUsername string) error { return nil },
+	}
+	svc := NewService(repo)
+
+	if err := svc.ConfirmOrder(1, "alice"); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestConfirmOrder_RepoErrorIsPropagated(t *testing.T) {
+	repo := &mockRepo{
+		confirmFn: func(orderID int, ownerUsername string) error { return ErrOrderNotFound },
+	}
+	svc := NewService(repo)
+
+	err := svc.ConfirmOrder(99, "alice")
+	if !errors.Is(err, ErrOrderNotFound) {
+		t.Errorf("got %v, want ErrOrderNotFound", err)
 	}
 }
