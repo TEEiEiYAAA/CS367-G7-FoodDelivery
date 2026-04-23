@@ -10,6 +10,8 @@ import "database/sql"
 type Repository interface {
 	CreateRestaurant(r Restaurant) (Restaurant, error)
 	GetRestaurants() ([]Restaurant, error)
+	GetRestaurantByID(id int) (*Restaurant, error)
+	ConfirmOrder()
 }
 
 type repository struct {
@@ -67,5 +69,15 @@ func (r *repository) GetRestaurants() ([]Restaurant, error) {
 
 // Stubs owned by other teammates — keep empty signature so the package still
 // compiles and main.go wiring stays intact.
-func (r *repository) GetRestaurantByID() {}
-func (r *repository) ConfirmOrder()      {}
+func (r *repository) GetRestaurantByID(id int) (*Restaurant, error) {
+	row := r.db.QueryRow(
+		"SELECT id, name, address, owner_username FROM restaurants WHERE id = ?", id,
+	)
+	var rest Restaurant
+	if err := row.Scan(&rest.ID, &rest.Name, &rest.Address, &rest.OwnerUsername); err != nil {
+		return nil, err
+	}
+	return &rest, nil
+}
+
+func (r *repository) ConfirmOrder() {}

@@ -1,14 +1,17 @@
 package restaurant
 
-import "errors"
+import (
+	"database/sql"
+	"errors"
+)
 
-// ErrInvalidRestaurant is returned when required fields are missing.
 var ErrInvalidRestaurant = errors.New("invalid restaurant data")
+var ErrNotFound = errors.New("restaurant not found")
 
 type Service interface {
 	CreateRestaurant(r Restaurant) (Restaurant, error)
 	GetRestaurants() ([]Restaurant, error)
-	GetRestaurantByID()
+	GetRestaurantByID(id int) (*Restaurant, error)
 	ConfirmOrder()
 }
 
@@ -31,5 +34,15 @@ func (s *service) GetRestaurants() ([]Restaurant, error) {
 	return s.repo.GetRestaurants()
 }
 
-func (s *service) GetRestaurantByID() {}
+func (s *service) GetRestaurantByID(id int) (*Restaurant, error) {
+	rest, err := s.repo.GetRestaurantByID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return rest, nil
+}
+
 func (s *service) ConfirmOrder()      {}
