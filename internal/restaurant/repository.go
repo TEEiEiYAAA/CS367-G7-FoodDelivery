@@ -2,16 +2,11 @@ package restaurant
 
 import "database/sql"
 
-// Repository defines the persistence contract for Restaurant entities.
-//
-// Only CreateRestaurant and GetRestaurants are implemented here (owner: Kanokporn).
-// GetRestaurantByID and ConfirmOrder are reserved stubs for other teammates to
-// fill in under their own feature branches.
 type Repository interface {
 	CreateRestaurant(r Restaurant) (Restaurant, error)
 	GetRestaurants() ([]Restaurant, error)
 	GetRestaurantByID(id int) (*Restaurant, error)
-	ConfirmOrder()
+	ConfirmOrder(orderID int, ownerUsername string) error
 }
 
 type repository struct {
@@ -22,8 +17,6 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-// CreateRestaurant inserts a new restaurant row and returns it populated with
-// the generated ID.
 func (r *repository) CreateRestaurant(rest Restaurant) (Restaurant, error) {
 	const q = `INSERT INTO restaurants (name, address, owner_username) VALUES (?, ?, ?)`
 
@@ -41,9 +34,6 @@ func (r *repository) CreateRestaurant(rest Restaurant) (Restaurant, error) {
 	return rest, nil
 }
 
-// GetRestaurants returns every restaurant ordered by id.
-// On an empty table it returns an empty slice (never nil) so handlers can
-// always marshal it as a JSON array.
 func (r *repository) GetRestaurants() ([]Restaurant, error) {
 	const q = `SELECT id, name, address, owner_username FROM restaurants ORDER BY id`
 
@@ -67,8 +57,6 @@ func (r *repository) GetRestaurants() ([]Restaurant, error) {
 	return restaurants, nil
 }
 
-// Stubs owned by other teammates — keep empty signature so the package still
-// compiles and main.go wiring stays intact.
 func (r *repository) GetRestaurantByID(id int) (*Restaurant, error) {
 	row := r.db.QueryRow(
 		"SELECT id, name, address, owner_username FROM restaurants WHERE id = ?", id,
@@ -80,4 +68,23 @@ func (r *repository) GetRestaurantByID(id int) (*Restaurant, error) {
 	return &rest, nil
 }
 
-func (r *repository) ConfirmOrder() {}
+func (r *repository) ConfirmOrder(orderID int, ownerUsername string) error {
+	const q = `
+		UPDATE orders o
+		JOIN restaurants res ON o.restaurant_id = res.id
+		SET o.status = 'confirmed'
+		WHERE o.id = ? AND res.owner_username = ?`
+
+	result, err := r.db.Exec(q, orderID, ownerUsername)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrOrderNotFound
+	}
+	return nil
+}

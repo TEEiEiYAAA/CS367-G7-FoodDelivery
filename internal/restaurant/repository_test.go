@@ -1,6 +1,7 @@
 package restaurant
 
 import (
+	"database/sql"
 	"errors"
 	"regexp"
 	"testing"
@@ -8,8 +9,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-// newTestRepo wires the concrete repository to an in-memory sqlmock driver.
-// Returns the repo and the mock so each test can set SQL expectations.
 func newTestRepo(t *testing.T) (Repository, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
@@ -70,7 +69,7 @@ func TestRepo_CreateRestaurant_LastInsertIdError(t *testing.T) {
 	}
 }
 
-// --- GetRestaurants ----------------------------------------------------------
+// GetRestaurants
 
 func TestRepo_GetRestaurants_Success(t *testing.T) {
 	repo, mock := newTestRepo(t)
@@ -128,8 +127,6 @@ func TestRepo_GetRestaurants_QueryError(t *testing.T) {
 func TestRepo_GetRestaurants_ScanError(t *testing.T) {
 	repo, mock := newTestRepo(t)
 
-	// id column receives a string — Scan into int will fail, exercising the
-	// rows.Scan error path.
 	rows := sqlmock.NewRows([]string{"id", "name", "address", "owner_username"}).
 		AddRow("not-an-int", "KFC", "Bangkok", "alice")
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT`)).WillReturnRows(rows)
@@ -152,5 +149,83 @@ func TestRepo_GetRestaurants_RowsError(t *testing.T) {
 	_, err := repo.GetRestaurants()
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+// GetRestaurantByID
+func TestRepo_GetRestaurantByID_Success(t *testing.T) {
+	repo, mock := newTestRepo(t)
+
+	rows := sqlmock.NewRows([]string{"id", "name", "address", "owner_username"}).
+		AddRow(1, "KFC", "Bangkok", "alice")
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, name, address, owner_username FROM restaurants WHERE id = ?")).
+		WithArgs(1).
+		WillReturnRows(rows)
+
+	got, err := repo.GetRestaurantByID(1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ID != 1 || got.Name != "KFC" || got.Address != "Bangkok" || got.OwnerUsername != "alice" {
+		t.Errorf("unexpected: %+v", got)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("expectations: %v", err)
+	}
+}
+
+func TestRepo_GetRestaurantByID_NotFound(t *testing.T) {
+	repo, mock := newTestRepo(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, name, address, owner_username FROM restaurants WHERE id = ?")).
+		WithArgs(99).
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := repo.GetRestaurantByID(99)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("got %v, want sql.ErrNoRows", err)
+	}
+}
+
+// ConfirmOrder
+func TestRepo_ConfirmOrder_Success(t *testing.T) {
+	repo, mock := newTestRepo(t)
+
+	mock.ExpectExec(`UPDATE orders`).
+		WithArgs(1, "alice").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	if err := repo.ConfirmOrder(1, "alice"); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("expectations: %v", err)
+	}
+}
+
+func TestRepo_ConfirmOrder_OrderNotFound(t *testing.T) {
+	repo, mock := newTestRepo(t)
+
+	mock.ExpectExec(`UPDATE orders`).
+		WithArgs(99, "alice").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err := repo.ConfirmOrder(99, "alice")
+	if !errors.Is(err, ErrOrderNotFound) {
+		t.Errorf("got %v, want ErrOrderNotFound", err)
+	}
+}
+
+func TestRepo_ConfirmOrder_ExecError(t *testing.T) {
+	repo, mock := newTestRepo(t)
+
+	wantErr := errors.New("connection refused")
+	mock.ExpectExec(`UPDATE orders`).
+		WithArgs(1, "alice").
+		WillReturnError(wantErr)
+
+	err := repo.ConfirmOrder(1, "alice")
+	if !errors.Is(err, wantErr) {
+		t.Errorf("got %v, want %v", err, wantErr)
 	}
 }
