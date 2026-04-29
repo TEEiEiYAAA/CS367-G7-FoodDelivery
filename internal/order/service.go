@@ -5,6 +5,7 @@ type Service interface {
 	CancelOrder()
 	GetOrderByID()
 	UpdateOrderStatus()
+	AssignRider(orderID string, riderID int) error
 }
 
 type service struct {
@@ -19,3 +20,6 @@ func (s *service) CreateOrder()       {}
 func (s *service) CancelOrder()       {}
 func (s *service) GetOrderByID()      {}
 func (s *service) UpdateOrderStatus() {}
+func (s *service) AssignRider(orderID string, riderID int) error {
+	return s.repo.AssignRider(orderID, riderID)
+}

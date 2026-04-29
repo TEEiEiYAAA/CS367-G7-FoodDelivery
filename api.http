@@ -87,9 +87,9 @@ Content-Type: application/json
 
 ### มอบหมายไรเดอร์
 POST http://localhost:8080/order/1/assign-rider
-Authorization: Bearer <YOUR_TOKEN_HERE>
 Content-Type: application/json
 
 {
-  "rider_id": 1
+  "riderId": 1
 }
+
