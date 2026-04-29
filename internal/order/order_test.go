@@ -17,7 +17,9 @@ func (m *mockRepository) AssignRider(orderID string, riderID int) error {
 }
 
 // ต้องประกาศฟังก์ชันอื่นๆ ให้ครบตาม Interface (แม้จะไม่ได้ใช้ในเทสนี้)
-func (m *mockRepository) CreateOrder()       {}
+func (m *mockRepository) CreateOrder(username string, req CreateOrderRequest) (int64, int, error) {
+	return 0, 0, m.err
+}
 func (m *mockRepository) CancelOrder()       {}
 func (m *mockRepository) GetOrderByID()      {}
 func (m *mockRepository) UpdateOrderStatus() {}

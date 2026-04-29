@@ -1,9 +1,13 @@
 package order
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+	"time"
+)
 
 type Repository interface {
-	CreateOrder()
+	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
 	CancelOrder()
 	GetOrderByID()
 	UpdateOrderStatus()
@@ -18,7 +22,87 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) CreateOrder()       {}
+// CreateOrder สร้าง order ใหม่ใน transaction
+// คืน (orderID, totalPrice, error)
+func (r *repository) CreateOrder(username string, req CreateOrderRequest) (int64, int, error) {
+	// เริ่ม transaction
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// คำนวณ total_price โดย query ราคาจาก food_items
+	totalPrice := 0
+	type itemDetail struct {
+		price    int
+		quantity int
+	}
+	details := make([]itemDetail, 0, len(req.Items))
+
+	for _, item := range req.Items {
+		var price int
+		var isAvailable bool
+		err = tx.QueryRow(
+			"SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?",
+			item.FoodItemID, req.RestaurantID,
+		).Scan(&price, &isAvailable)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return 0, 0, fmt.Errorf("food item %d not found in restaurant %d", item.FoodItemID, req.RestaurantID)
+			}
+			return 0, 0, err
+		}
+		if !isAvailable {
+			return 0, 0, fmt.Errorf("food item %d is not available", item.FoodItemID)
+		}
+		details = append(details, itemDetail{price: price, quantity: item.Quantity})
+		totalPrice += price * item.Quantity
+	}
+
+	// grace period 5 นาที (ลูกค้ายกเลิกได้ใน 5 นาที)
+	gracePeriodEnd := time.Now().Add(5 * time.Minute)
+
+	// INSERT orders
+	result, err := tx.Exec(
+		`INSERT INTO orders
+			(customer_username, restaurant_id, rider_id, status, total_price, delivery_address, created_at, customer_grace_period_end)
+		 VALUES (?, ?, NULL, 'pending', ?, ?, NOW(), ?)`,
+		username, req.RestaurantID, totalPrice, req.DeliveryAddress, gracePeriodEnd,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	orderID, err := result.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// INSERT order_items
+	for i, item := range req.Items {
+		subtotal := details[i].price * details[i].quantity
+		_, err = tx.Exec(
+			"INSERT INTO order_items (order_id, food_item_id, quantity, subtotal) VALUES (?, ?, ?, ?)",
+			orderID, item.FoodItemID, item.Quantity, subtotal,
+		)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return orderID, totalPrice, nil
+}
+
 func (r *repository) CancelOrder()       {}
 func (r *repository) GetOrderByID()      {}
 func (r *repository) UpdateOrderStatus() {}
