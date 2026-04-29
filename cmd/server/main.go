@@ -9,7 +9,7 @@ import (
 	"CS367-G7-FoodDelivery/internal/middleware"
 	"CS367-G7-FoodDelivery/internal/order"
 	"CS367-G7-FoodDelivery/internal/restaurant"
-	"CS367-G7-FoodDelivery/internal/rider"
+	
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,19 +22,19 @@ func main() {
 	restRepo := restaurant.NewRepository(db)
 	menuRepo := menu.NewRepository(db)
 	orderRepo := order.NewRepository(db)
-	riderRepo := rider.NewRepository(db)
+	
 
 	// Init Services
 	restSvc := restaurant.NewService(restRepo)
 	menuSvc := menu.NewService(menuRepo)
 	orderSvc := order.NewService(orderRepo)
-	riderSvc := rider.NewService(riderRepo)
+	
 
 	// Init Handlers
 	restHandler := restaurant.NewHandler(restSvc)
 	menuHandler := menu.NewHandler(menuSvc)
 	orderHandler := order.NewHandler(orderSvc)
-	riderHandler := rider.NewHandler(riderSvc)
+	
 
 	r := gin.Default()
 
@@ -57,7 +57,7 @@ func main() {
 	r.PUT("/order/:id/status", middleware.AuthMiddleware(), orderHandler.UpdateOrderStatus)
 
 	// 🛵 Rider
-	r.POST("/order/:id/assign-rider", middleware.AuthMiddleware(), riderHandler.AssignRider)
+	r.POST("/order/:id/assign-rider",middleware.AuthMiddleware(),orderHandler.AssignRider)
 
 	// Auth Route
 	r.POST("/login", auth.LoginHandler)

@@ -21,3 +21,30 @@ func (h *Handler) GetOrderByID(c *gin.Context) {}
 
 // PUT /order/{id}/status (อัปเดตสถานะออเดอร์ เช่น รับออเดอร์ กำลังทำ ทำเสร็จ กำลังจัดส่ง)
 func (h *Handler) UpdateOrderStatus(c *gin.Context) {}
+
+// POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
+func (h *Handler) AssignRider(c *gin.Context) {
+	orderID := c.Param("id")
+
+	var body struct {
+		RiderID int `json:"riderId"`
+	}
+
+	// รับค่า JSON
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{
+	"error": err.Error(),
+})
+	}
+
+	// เรียก service
+	err := h.service.AssignRider(orderID, body.RiderID)
+	if err != nil {
+		c.JSON(500, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Rider assigned successfully",
+	})
+}
