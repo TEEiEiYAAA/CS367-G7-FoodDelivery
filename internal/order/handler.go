@@ -1,6 +1,10 @@
 package order
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Handler struct {
 	service Service
@@ -11,7 +15,39 @@ func NewHandler(s Service) *Handler {
 }
 
 // POST /order (สร้างคำสั่งซื้อ)
-func (h *Handler) CreateOrder(c *gin.Context) {}
+func (h *Handler) CreateOrder(c *gin.Context) {
+	// ดึง username จาก JWT ที่ AuthMiddleware set ไว้ใน context
+	usernameVal, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	username, ok := usernameVal.(string)
+	if !ok || username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+		return
+	}
+
+	// Bind + Validate request body
+	var req CreateOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// เรียก service layer
+	orderID, totalPrice, err := h.service.CreateOrder(username, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, CreateOrderResponse{
+		OrderID:    orderID,
+		TotalPrice: totalPrice,
+		Status:     "pending",
+	})
+}
 
 // PUT /order/cancel (ลูกค้ายกเลิกออเดอร์)
 func (h *Handler) CancelOrder(c *gin.Context) {}
@@ -33,8 +69,8 @@ func (h *Handler) AssignRider(c *gin.Context) {
 	// รับค่า JSON
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(400, gin.H{
-	"error": err.Error(),
-})
+			"error": err.Error(),
+		})
 	}
 
 	// เรียก service
