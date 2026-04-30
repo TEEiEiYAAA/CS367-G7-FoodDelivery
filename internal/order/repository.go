@@ -8,7 +8,7 @@ import (
 
 type Repository interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
-	CancelOrder()
+	CancelOrder(username string, orderID int) error
 	GetOrderByID()
 	UpdateOrderStatus()
 	AssignRider(orderID string, riderID int) error
@@ -103,7 +103,43 @@ func (r *repository) CreateOrder(username string, req CreateOrderRequest) (int64
 	return orderID, totalPrice, nil
 }
 
-func (r *repository) CancelOrder()       {}
+// CancelOrder ตรวจสิทธิ์และ grace period ก่อนเปลี่ยน status เป็น cancelled
+func (r *repository) CancelOrder(username string, orderID int) error {
+	var dbUsername, status string
+	var gracePeriodEnd time.Time
+
+	err := r.db.QueryRow(
+		"SELECT customer_username, status, customer_grace_period_end FROM orders WHERE id = ?",
+		orderID,
+	).Scan(&dbUsername, &status, &gracePeriodEnd)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("order %d not found", orderID)
+		}
+		return err
+	}
+
+	// เช็คว่าเป็นเจ้าของ order นี้จริง
+	if dbUsername != username {
+		return fmt.Errorf("forbidden: this order does not belong to you")
+	}
+
+	// เช็คว่า status ยังเป็น pending อยู่
+	if status != "pending" {
+		return fmt.Errorf("order cannot be cancelled: current status is '%s'", status)
+	}
+
+	// เช็ค grace period
+	if time.Now().After(gracePeriodEnd) {
+		return fmt.Errorf("cancellation window has expired")
+	}
+
+	_, err = r.db.Exec(
+		"UPDATE orders SET status = 'cancelled' WHERE id = ?",
+		orderID,
+	)
+	return err
+}
 func (r *repository) GetOrderByID()      {}
 func (r *repository) UpdateOrderStatus() {}
 func (r *repository) AssignRider(orderID string, riderID int) error {

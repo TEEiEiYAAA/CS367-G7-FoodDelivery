@@ -2,6 +2,7 @@ package order
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,7 +51,43 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 }
 
 // PUT /order/cancel (ลูกค้ายกเลิกออเดอร์)
-func (h *Handler) CancelOrder(c *gin.Context) {}
+func (h *Handler) CancelOrder(c *gin.Context) {
+	// ดึง username จาก JWT
+	usernameVal, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	username, ok := usernameVal.(string)
+	if !ok || username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+		return
+	}
+
+	// Bind request body
+	var req CancelOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// เรียก service
+	if err := h.service.CancelOrder(username, req.OrderID); err != nil {
+		switch {
+		case containsAny(err.Error(), "not found"):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case containsAny(err.Error(), "forbidden"):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		case containsAny(err.Error(), "cannot be cancelled", "expired"):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order cancelled successfully"})
+}
 
 // GET /order/{id} (ดูรายละเอียดออเดอร์)
 func (h *Handler) GetOrderByID(c *gin.Context) {}
@@ -83,4 +120,13 @@ func (h *Handler) AssignRider(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Rider assigned successfully",
 	})
+}
+
+func containsAny(s string, substrings ...string) bool {
+	for _, substr := range substrings {
+		if strings.Contains(s, substr) {
+			return true
+		}
+	}
+	return false
 }

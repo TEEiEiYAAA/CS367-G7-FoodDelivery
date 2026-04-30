@@ -20,7 +20,7 @@ func (m *mockRepository) AssignRider(orderID string, riderID int) error {
 func (m *mockRepository) CreateOrder(username string, req CreateOrderRequest) (int64, int, error) {
 	return 0, 0, m.err
 }
-func (m *mockRepository) CancelOrder()       {}
+func (m *mockRepository) CancelOrder(username string, orderID int) error { return nil }
 func (m *mockRepository) GetOrderByID()      {}
 func (m *mockRepository) UpdateOrderStatus() {}
 
