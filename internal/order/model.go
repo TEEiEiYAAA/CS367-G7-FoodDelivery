@@ -43,3 +43,8 @@ type CreateOrderResponse struct {
 	TotalPrice int    `json:"total_price"`
 	Status     string `json:"status"`
 }
+
+// CancelOrderRequest คือ request body สำหรับ PUT /order/cancel
+type CancelOrderRequest struct {
+	OrderID int `json:"order_id" binding:"required"`
+}

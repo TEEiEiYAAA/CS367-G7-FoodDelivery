@@ -2,7 +2,7 @@ package order
 
 type Service interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
-	CancelOrder()
+	CancelOrder(username string, orderID int) error
 	GetOrderByID()
 	UpdateOrderStatus()
 	AssignRider(orderID string, riderID int) error
@@ -21,7 +21,10 @@ func (s *service) CreateOrder(username string, req CreateOrderRequest) (int64, i
 	return s.repo.CreateOrder(username, req)
 }
 
-func (s *service) CancelOrder()       {}
+// CancelOrder ส่งต่อ logic ไปยัง repository
+func (s *service) CancelOrder(username string, orderID int) error {
+	return s.repo.CancelOrder(username, orderID)
+}
 func (s *service) GetOrderByID()      {}
 func (s *service) UpdateOrderStatus() {}
 func (s *service) AssignRider(orderID string, riderID int) error {
