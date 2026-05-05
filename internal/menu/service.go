@@ -1,7 +1,7 @@
 package menu
 
 type Service interface {
-	CreateMenu()
+	CreateMenu(restaurantID int, req CreateMenuRequest) (Menu, error)
 	GetMenu()
 }
 
@@ -13,5 +13,7 @@ func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) CreateMenu() {}
-func (s *service) GetMenu()    {}
+func (s *service) CreateMenu(restaurantID int, req CreateMenuRequest) (Menu, error) {
+	return s.repo.CreateMenu(restaurantID, req)
+}
+func (s *service) GetMenu() {}
