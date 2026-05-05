@@ -39,4 +39,18 @@ func (h *Handler) CreateMenu(c *gin.Context) {
 }
 
 // GET /restaurant/{id}/menu (ดูเมนู)
-func (h *Handler) GetMenu(c *gin.Context) {}
+func (h *Handler) GetMenu(c *gin.Context) {
+	restaurantID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid restaurant id"})
+		return
+	}
+
+	menus, err := h.service.GetMenu(restaurantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get menu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, menus)
+}
