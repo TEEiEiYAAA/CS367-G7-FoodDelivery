@@ -3,7 +3,7 @@ package order
 import (
 	"net/http"
 	"strings"
-
+	"strconv"
 	"github.com/gin-gonic/gin"
 )
 
@@ -90,7 +90,23 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 }
 
 // GET /order/{id} (ดูรายละเอียดออเดอร์)
-func (h *Handler) GetOrderByID(c *gin.Context) {}
+func (h *Handler) GetOrderByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	order, items, err := h.service.GetOrderByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"order": order,
+		"items": items,
+	})
+}
 
 // PUT /order/{id}/status (อัปเดตสถานะออเดอร์ เช่น รับออเดอร์ กำลังทำ ทำเสร็จ กำลังจัดส่ง)
 func (h *Handler) UpdateOrderStatus(c *gin.Context) {}
