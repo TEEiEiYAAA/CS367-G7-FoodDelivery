@@ -141,7 +141,30 @@ func (r *repository) CancelOrder(username string, orderID int) error {
 	return err
 }
 func (r *repository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
-	return nil, nil, nil 
+	var order Order
+	queryOrder := "SELECT id, customer_username, restaurant_id, status, total_price FROM orders WHERE id = ?"
+	err := r.db.QueryRow(queryOrder, orderID).Scan(&order.ID, &order.CustomerUsername, &order.RestaurantID, &order.Status, &order.TotalPrice)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var items []OrderItem
+	queryItems := "SELECT id, order_id, food_item_id, quantity, subtotal FROM order_items WHERE order_id = ?"
+	rows, err := r.db.Query(queryItems, orderID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item OrderItem
+		if err := rows.Scan(&item.ID, &item.OrderID, &item.FoodItemID, &item.Quantity, &item.Subtotal); err != nil {
+			return nil, nil, err
+		}
+		items = append(items, item)
+	}
+
+	return &order, items, nil 
 }
 func (r *repository) UpdateOrderStatus() {}
 func (r *repository) AssignRider(orderID string, riderID int) error {
