@@ -38,7 +38,7 @@ CS367-G7-FoodDelivery/internal/order/handler.go:141.55,142.36 1 0
 CS367-G7-FoodDelivery/internal/order/handler.go:142.36,143.34 1 0
 CS367-G7-FoodDelivery/internal/order/handler.go:143.34,145.4 1 0
 CS367-G7-FoodDelivery/internal/order/handler.go:147.2,147.14 1 0
-CS367-G7-FoodDelivery/internal/order/repository.go:21.43,23.2 1 0
+CS367-G7-FoodDelivery/internal/order/repository.go:21.43,23.2 1 1
 CS367-G7-FoodDelivery/internal/order/repository.go:27.95,30.16 2 0
 CS367-G7-FoodDelivery/internal/order/repository.go:30.16,32.3 1 0
 CS367-G7-FoodDelivery/internal/order/repository.go:33.2,33.15 1 0
@@ -75,7 +75,7 @@ CS367-G7-FoodDelivery/internal/order/repository.go:133.38,135.3 1 0
 CS367-G7-FoodDelivery/internal/order/repository.go:137.2,141.12 2 0
 CS367-G7-FoodDelivery/internal/order/repository.go:143.77,145.2 1 0
 CS367-G7-FoodDelivery/internal/order/repository.go:146.43,146.44 0 0
-CS367-G7-FoodDelivery/internal/order/repository.go:147.69,152.2 3 0
+CS367-G7-FoodDelivery/internal/order/repository.go:147.69,152.2 3 1
 CS367-G7-FoodDelivery/internal/order/service.go:15.42,17.2 1 1
 CS367-G7-FoodDelivery/internal/order/service.go:20.92,22.2 1 0
 CS367-G7-FoodDelivery/internal/order/service.go:25.67,27.2 1 0
