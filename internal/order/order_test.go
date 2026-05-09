@@ -21,7 +21,16 @@ func (m *mockRepository) CreateOrder(username string, req CreateOrderRequest) (i
 	return 0, 0, m.err
 }
 func (m *mockRepository) CancelOrder(username string, orderID int) error { return nil }
-func (m *mockRepository) GetOrderByID()      {}
+func (m *mockRepository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
+    if m.err != nil {
+        return nil, nil, m.err
+    }
+    // จำลองข้อมูลสมมติส่งกลับไป
+    mockOrder := &Order{ID: orderID, Status: "pending", TotalPrice: 500}
+    mockItems := []OrderItem{{ID: 1, OrderID: orderID, FoodItemID: 10, Quantity: 2}}
+    
+    return mockOrder, mockItems, nil
+}
 func (m *mockRepository) UpdateOrderStatus() {}
 
 func TestAssignRider(t *testing.T) {
@@ -49,3 +58,30 @@ func TestAssignRider(t *testing.T) {
 		}
 	})
 }
+
+func TestGetOrderByID(t *testing.T) {
+	t.Run("Success - Should return order detail", func(t *testing.T) {
+		mockRepo := &mockRepository{err: nil}
+		service := NewService(mockRepo)
+
+		order, items, err := service.GetOrderByID(1)
+
+		if err != nil {
+			t.Errorf("Expected nil, got %v", err)
+		}
+		
+		// ตรวจสอบว่า order ไม่เป็น nil ก่อนเช็ก ID (กันโปรแกรมแครช)
+		if order == nil {
+			t.Fatal("Expected order object, got nil")
+		}
+
+		if order.ID != 1 {
+			t.Errorf("Expected ID 1, got %d", order.ID)
+		}
+
+		// ตรวจสอบตัวแปร items เพื่อให้คอมไพเลอร์ยอมให้ผ่าน
+		if len(items) == 0 {
+			t.Error("Expected items, but got empty list")
+		}
+	}) 
+} 

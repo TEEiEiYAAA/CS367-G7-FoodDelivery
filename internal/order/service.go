@@ -3,7 +3,7 @@ package order
 type Service interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
 	CancelOrder(username string, orderID int) error
-	GetOrderByID()
+	GetOrderByID(orderID int) (*Order, []OrderItem, error)
 	UpdateOrderStatus()
 	AssignRider(orderID string, riderID int) error
 }
@@ -25,7 +25,9 @@ func (s *service) CreateOrder(username string, req CreateOrderRequest) (int64, i
 func (s *service) CancelOrder(username string, orderID int) error {
 	return s.repo.CancelOrder(username, orderID)
 }
-func (s *service) GetOrderByID()      {}
+func (s *service) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
+	return s.repo.GetOrderByID(orderID)
+}
 func (s *service) UpdateOrderStatus() {}
 func (s *service) AssignRider(orderID string, riderID int) error {
 	return s.repo.AssignRider(orderID, riderID)

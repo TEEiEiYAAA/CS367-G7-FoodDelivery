@@ -9,7 +9,7 @@ import (
 type Repository interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
 	CancelOrder(username string, orderID int) error
-	GetOrderByID()
+	GetOrderByID(orderID int) (*Order, []OrderItem, error)
 	UpdateOrderStatus()
 	AssignRider(orderID string, riderID int) error
 }
@@ -140,7 +140,9 @@ func (r *repository) CancelOrder(username string, orderID int) error {
 	)
 	return err
 }
-func (r *repository) GetOrderByID()      {}
+func (r *repository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
+	return nil, nil, nil 
+}
 func (r *repository) UpdateOrderStatus() {}
 func (r *repository) AssignRider(orderID string, riderID int) error {
 	query := "UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?"
