@@ -29,11 +29,11 @@ CS367-G7-FoodDelivery/internal/order/handler.go:100.2,101.16 2 1
 CS367-G7-FoodDelivery/internal/order/handler.go:101.16,104.3 2 1
 CS367-G7-FoodDelivery/internal/order/handler.go:105.2,108.4 1 1
 CS367-G7-FoodDelivery/internal/order/handler.go:112.54,112.55 0 0
-CS367-G7-FoodDelivery/internal/order/handler.go:115.47,123.48 3 0
-CS367-G7-FoodDelivery/internal/order/handler.go:123.48,127.3 1 0
-CS367-G7-FoodDelivery/internal/order/handler.go:130.2,131.16 2 0
-CS367-G7-FoodDelivery/internal/order/handler.go:131.16,134.3 2 0
-CS367-G7-FoodDelivery/internal/order/handler.go:136.2,138.4 1 0
+CS367-G7-FoodDelivery/internal/order/handler.go:115.47,123.48 3 1
+CS367-G7-FoodDelivery/internal/order/handler.go:123.48,127.3 1 1
+CS367-G7-FoodDelivery/internal/order/handler.go:130.2,131.16 2 1
+CS367-G7-FoodDelivery/internal/order/handler.go:131.16,134.3 2 1
+CS367-G7-FoodDelivery/internal/order/handler.go:136.2,138.4 1 1
 CS367-G7-FoodDelivery/internal/order/handler.go:141.55,142.36 1 0
 CS367-G7-FoodDelivery/internal/order/handler.go:142.36,143.34 1 0
 CS367-G7-FoodDelivery/internal/order/handler.go:143.34,145.4 1 0
