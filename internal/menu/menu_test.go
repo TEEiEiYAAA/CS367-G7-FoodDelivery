@@ -19,7 +19,37 @@ func (m *mockRepo) GetMenu(restaurantID int) ([]Menu, error) {
 }
 
 func TestGetMenuByRestaurant(t *testing.T) {
-	// TODO: Setup mock repository and test service
+	t.Run("success", func(t *testing.T) {
+		want := []Menu{
+			{ID: 1, RestaurantID: 10, Name: "Pad Thai", Price: 80},
+		}
+		repo := &mockRepo{
+			getMenuFn: func(restaurantID int) ([]Menu, error) {
+				return want, nil
+			},
+		}
+		svc := NewService(repo)
+		got, err := svc.GetMenu(10)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(got) != 1 || got[0] != want[0] {
+			t.Errorf("expected %v, got %v", want, got)
+		}
+	})
+
+	t.Run("repository_error", func(t *testing.T) {
+		repo := &mockRepo{
+			getMenuFn: func(restaurantID int) ([]Menu, error) {
+				return nil, errors.New("db error")
+			},
+		}
+		svc := NewService(repo)
+		_, err := svc.GetMenu(10)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
 }
 
 func TestCreateMenu(t *testing.T) {
