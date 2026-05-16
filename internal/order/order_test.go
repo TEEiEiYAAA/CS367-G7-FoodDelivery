@@ -31,16 +31,19 @@ func (m *mockRepository) CreateOrder(username string, req CreateOrderRequest) (i
 }
 func (m *mockRepository) CancelOrder(username string, orderID int) error { return nil }
 func (m *mockRepository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
-    if m.err != nil {
-        return nil, nil, m.err
-    }
-    // จำลองข้อมูลสมมติส่งกลับไป
-    mockOrder := &Order{ID: orderID, Status: "pending", TotalPrice: 500}
-    mockItems := []OrderItem{{ID: 1, OrderID: orderID, FoodItemID: 10, Quantity: 2}}
-    
-    return mockOrder, mockItems, nil
+	if m.err != nil {
+		return nil, nil, m.err
+	}
+	// จำลองข้อมูลสมมติส่งกลับไป
+	mockOrder := &Order{ID: orderID, Status: "pending", TotalPrice: 500}
+	mockItems := []OrderItem{{ID: 1, OrderID: orderID, FoodItemID: 10, Quantity: 2}}
+
+	return mockOrder, mockItems, nil
 }
-func (m *mockRepository) UpdateOrderStatus() {}
+
+func (m *mockRepository) UpdateOrderStatus(orderID int, newStatus string, role string) error {
+	return m.err
+}
 
 // mockService สำหรับเทส Handler
 type mockService struct {
@@ -55,6 +58,10 @@ func (m *mockService) CreateOrder(username string, req CreateOrderRequest) (int6
 }
 
 func (m *mockService) AssignRider(orderID string, riderID int) error {
+	return m.err
+}
+
+func (m *mockService) UpdateOrderStatus(orderID int, newStatus string, role string) error {
 	return m.err
 }
 
@@ -205,7 +212,7 @@ func TestGetOrderByID(t *testing.T) {
 		if err != nil {
 			t.Errorf("Expected nil, got %v", err)
 		}
-		
+
 		// ตรวจสอบว่า order ไม่เป็น nil ก่อนเช็ก ID (กันโปรแกรมแครช)
 		if order == nil {
 			t.Fatal("Expected order object, got nil")
@@ -219,8 +226,8 @@ func TestGetOrderByID(t *testing.T) {
 		if len(items) == 0 {
 			t.Error("Expected items, but got empty list")
 		}
-	}) 
-} 
+	})
+}
 
 func TestCreateOrderHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -235,9 +242,9 @@ func TestCreateOrderHandler(t *testing.T) {
 		}, handler.CreateOrder)
 
 		reqBody, _ := json.Marshal(CreateOrderRequest{
-			RestaurantID: 1,
+			RestaurantID:    1,
 			DeliveryAddress: "Bangkok",
-			Items: []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+			Items:           []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
 		})
 
 		req, _ := http.NewRequest("POST", "/order", bytes.NewBuffer(reqBody))
