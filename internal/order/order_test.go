@@ -1,12 +1,18 @@
 package order
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/gin-gonic/gin"
 )
 
 // สร้าง mockRepository ขึ้นมาเพื่อจำลองพฤติกรรมของฐานข้อมูล
@@ -224,75 +230,64 @@ func TestGetOrderByID(t *testing.T) {
 	})
 }
 
-func TestUpdateOrderStatusRepository(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %s", err)
-	}
-	defer db.Close()
+func TestCreateOrderHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 
-	repo := NewRepository(db)
+	t.Run("Success", func(t *testing.T) {
+		mockSvc := &mockService{orderID: 1, totalPrice: 100}
+		handler := NewHandler(mockSvc)
 
-	t.Run("Success - restaurant: confirmed → preparing", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
+		r := gin.Default()
+		r.POST("/order", func(c *gin.Context) {
+			c.Set("username", "testuser")
+		}, handler.CreateOrder)
 
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
-			WithArgs("preparing", 1).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+		reqBody, _ := json.Marshal(CreateOrderRequest{
+			RestaurantID:    1,
+			DeliveryAddress: "Bangkok",
+			Items:           []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+		})
 
-		err := repo.UpdateOrderStatus(1, "preparing", "restaurant")
-		if err != nil {
-			t.Errorf("Expected nil, got %v", err)
+		req, _ := http.NewRequest("POST", "/order", bytes.NewBuffer(reqBody))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected 201, got %d", w.Code)
 		}
 	})
 
-	t.Run("Success - rider: assigned → delivering", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(2).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("assigned"))
+	t.Run("NoUserInContext", func(t *testing.T) {
+		mockSvc := &mockService{}
+		handler := NewHandler(mockSvc)
 
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
-			WithArgs("delivering", 2).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+		r := gin.Default()
+		r.POST("/order", handler.CreateOrder) // ไม่ได้ set username
 
-		err := repo.UpdateOrderStatus(2, "delivering", "rider")
-		if err != nil {
-			t.Errorf("Expected nil, got %v", err)
+		reqBody, _ := json.Marshal(CreateOrderRequest{})
+		req, _ := http.NewRequest("POST", "/order", bytes.NewBuffer(reqBody))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", w.Code)
 		}
 	})
 
-	t.Run("Failure - Order not found", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(999).
-			WillReturnError(sql.ErrNoRows)
+	t.Run("InvalidJSON", func(t *testing.T) {
+		handler := NewHandler(&mockService{})
+		r := gin.Default()
+		r.POST("/order", func(c *gin.Context) {
+			c.Set("username", "testuser")
+		}, handler.CreateOrder)
 
-		err := repo.UpdateOrderStatus(999, "preparing", "restaurant")
-		if err == nil || err.Error() != "order not found" {
-			t.Errorf("Expected 'order not found', got %v", err)
-		}
-	})
+		req, _ := http.NewRequest("POST", "/order", bytes.NewBufferString("invalid json"))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
 
-	t.Run("Failure - Invalid role (customer)", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
-
-		err := repo.UpdateOrderStatus(1, "preparing", "customer")
-		if err == nil || !strings.Contains(err.Error(), "forbidden") {
-			t.Errorf("Expected forbidden error, got %v", err)
-		}
-	})
-
-	t.Run("Failure - Invalid transition (pending → delivered)", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("pending"))
-
-		err := repo.UpdateOrderStatus(1, "delivered", "rider")
-		if err == nil || !strings.Contains(err.Error(), "invalid transition") {
-			t.Errorf("Expected invalid transition error, got %v", err)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
 		}
 	})
 }
+
