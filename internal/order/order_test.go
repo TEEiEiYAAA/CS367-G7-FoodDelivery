@@ -291,3 +291,75 @@ func TestCreateOrderHandler(t *testing.T) {
 	})
 }
 
+func TestUpdateOrderStatusRepository(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to open sqlmock: %s", err)
+	}
+	defer db.Close()
+
+	repo := NewRepository(db)
+
+	t.Run("Success - restaurant: confirmed → preparing", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
+
+		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
+			WithArgs("preparing", 1).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		err := repo.UpdateOrderStatus(1, "preparing", "restaurant")
+		if err != nil {
+			t.Errorf("Expected nil, got %v", err)
+		}
+	})
+
+	t.Run("Success - rider: assigned → delivering", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
+			WithArgs(2).
+			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("assigned"))
+
+		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
+			WithArgs("delivering", 2).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		err := repo.UpdateOrderStatus(2, "delivering", "rider")
+		if err != nil {
+			t.Errorf("Expected nil, got %v", err)
+		}
+	})
+
+	t.Run("Failure - Order not found", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
+			WithArgs(999).
+			WillReturnError(sql.ErrNoRows)
+
+		err := repo.UpdateOrderStatus(999, "preparing", "restaurant")
+		if err == nil || err.Error() != "order not found" {
+			t.Errorf("Expected 'order not found', got %v", err)
+		}
+	})
+
+	t.Run("Failure - Invalid role (customer)", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
+
+		err := repo.UpdateOrderStatus(1, "preparing", "customer")
+		if err == nil || !strings.Contains(err.Error(), "forbidden") {
+			t.Errorf("Expected forbidden error, got %v", err)
+		}
+	})
+
+	t.Run("Failure - Invalid transition (pending → delivered)", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("pending"))
+
+		err := repo.UpdateOrderStatus(1, "delivered", "rider")
+		if err == nil || !strings.Contains(err.Error(), "invalid transition") {
+			t.Errorf("Expected invalid transition error, got %v", err)
+		}
+	})
+}
