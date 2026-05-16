@@ -2,8 +2,9 @@ package order
 
 import (
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -109,7 +110,47 @@ func (h *Handler) GetOrderByID(c *gin.Context) {
 }
 
 // PUT /order/{id}/status (อัปเดตสถานะออเดอร์ เช่น รับออเดอร์ กำลังทำ ทำเสร็จ กำลังจัดส่ง)
-func (h *Handler) UpdateOrderStatus(c *gin.Context) {}
+func (h *Handler) UpdateOrderStatus(c *gin.Context) {
+	// แปลง order ID จาก URL param
+	idStr := c.Param("id")
+	orderID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	// ดึง role จาก JWT
+	roleVal, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	role, _ := roleVal.(string)
+
+	// Bind request body
+	var req UpdateOrderStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// เรียก service
+	if err := h.service.UpdateOrderStatus(orderID, req.Status, role); err != nil {
+		switch {
+		case containsAny(err.Error(), "not found"):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case containsAny(err.Error(), "forbidden"):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		case containsAny(err.Error(), "invalid transition"):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully"})
+}
 
 // POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
 func (h *Handler) AssignRider(c *gin.Context) {

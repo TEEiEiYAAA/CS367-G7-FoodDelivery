@@ -10,7 +10,7 @@ type Repository interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
 	CancelOrder(username string, orderID int) error
 	GetOrderByID(orderID int) (*Order, []OrderItem, error)
-	UpdateOrderStatus()
+	UpdateOrderStatus(orderID int, newStatus string, role string) error
 	AssignRider(orderID string, riderID int) error
 }
 
@@ -164,9 +164,42 @@ func (r *repository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
 		items = append(items, item)
 	}
 
-	return &order, items, nil 
+	return &order, items, nil
 }
-func (r *repository) UpdateOrderStatus() {}
+func (r *repository) UpdateOrderStatus(orderID int, newStatus string, role string) error {
+
+	var currentStatus string
+	err := r.db.QueryRow("SELECT status FROM orders WHERE id = ?", orderID).Scan(&currentStatus)
+	if err != nil {
+		return fmt.Errorf("order not found")
+	}
+
+	allowed := map[string]map[string]string{
+		"restaurant": {
+			"confirmed": "preparing",
+			"preparing": "ready",
+		},
+		"rider": {
+			"ready":      "delivering",
+			"assigned":   "delivering",
+			"delivering": "delivered",
+		},
+	}
+
+	transitions, roleExists := allowed[role]
+	if !roleExists {
+		return fmt.Errorf("forbidden: role '%s' cannot update order status", role)
+	}
+
+	expectedNext, ok := transitions[currentStatus]
+	if !ok || expectedNext != newStatus {
+		return fmt.Errorf("invalid transition: '%s' → '%s' is not allowed for role '%s'", currentStatus, newStatus, role)
+	}
+
+	_, err = r.db.Exec("UPDATE orders SET status = ? WHERE id = ?", newStatus, orderID)
+	return err
+}
+
 func (r *repository) AssignRider(orderID string, riderID int) error {
 	query := "UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?"
 
