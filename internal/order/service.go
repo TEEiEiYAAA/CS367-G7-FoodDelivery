@@ -4,7 +4,7 @@ type Service interface {
 	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
 	CancelOrder(username string, orderID int) error
 	GetOrderByID(orderID int) (*Order, []OrderItem, error)
-	UpdateOrderStatus()
+	UpdateOrderStatus(orderID int, newStatus string, role string) error
 	AssignRider(orderID string, riderID int) error
 }
 
@@ -28,7 +28,10 @@ func (s *service) CancelOrder(username string, orderID int) error {
 func (s *service) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
 	return s.repo.GetOrderByID(orderID)
 }
-func (s *service) UpdateOrderStatus() {}
+func (s *service) UpdateOrderStatus(orderID int, newStatus string, role string) error {
+	return s.repo.UpdateOrderStatus(orderID, newStatus, role)
+}
+
 func (s *service) AssignRider(orderID string, riderID int) error {
 	return s.repo.AssignRider(orderID, riderID)
 }
