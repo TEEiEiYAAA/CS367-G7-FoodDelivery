@@ -165,6 +165,7 @@ func (h *Handler) AssignRider(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"error": err.Error(),
 		})
+		return
 	}
 
 	// เรียก service
