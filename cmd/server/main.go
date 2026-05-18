@@ -22,18 +22,21 @@ func main() {
 	restRepo := restaurant.NewRepository(db)
 	menuRepo := menu.NewRepository(db)
 	orderRepo := order.NewRepository(db)
+	authRepo := auth.NewRepository(db)
 	
 
 	// Init Services
 	restSvc := restaurant.NewService(restRepo)
 	menuSvc := menu.NewService(menuRepo)
 	orderSvc := order.NewService(orderRepo)
+	authSvc := auth.NewService(authRepo)
 	
 
 	// Init Handlers
 	restHandler := restaurant.NewHandler(restSvc)
 	menuHandler := menu.NewHandler(menuSvc)
 	orderHandler := order.NewHandler(orderSvc)
+	authHandler := auth.NewHandler(authSvc)
 	
 
 	r := gin.Default()
@@ -60,7 +63,7 @@ func main() {
 	r.POST("/order/:id/assign-rider",middleware.AuthMiddleware(),orderHandler.AssignRider)
 
 	// Auth Route
-	r.POST("/login", auth.LoginHandler)
+	r.POST("/login", authHandler.LoginHandler)
 
 	log.Println("Server running on :8080")
 	r.Run(":8080")

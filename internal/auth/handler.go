@@ -6,7 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func LoginHandler(c *gin.Context) {
+type Handler struct {
+	svc Service
+}
+
+func NewHandler(svc Service) *Handler {
+	return &Handler{svc: svc}
+}
+
+func (h *Handler) LoginHandler(c *gin.Context) {
 	var req LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -16,7 +24,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	token, err := Login(req.Username, req.Password)
+	token, err := h.svc.Login(req.Username, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": err.Error(),
