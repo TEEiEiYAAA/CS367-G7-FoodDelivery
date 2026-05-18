@@ -39,7 +39,7 @@
 
 ---
 ## Feature
-มีทั้งหมด 13 Features
+มีทั้งหมด 11 Features
 ### 🏪 Restaurant
 POST /restaurant (สร้างร้านอาหาร)
 
