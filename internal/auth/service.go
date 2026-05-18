@@ -1,12 +1,25 @@
 package auth
 
 import (
-	"CS367-G7-FoodDelivery/pkg/jwt"
 	"errors"
+
+	"CS367-G7-FoodDelivery/pkg/jwt"
 )
 
-func Login(username, password string) (string, error) {
-	user, _ := GetUserByUsername(username)
+type Service interface {
+	Login(username, password string) (string, error)
+}
+
+type service struct {
+	repo Repository
+}
+
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
+}
+
+func (s *service) Login(username, password string) (string, error) {
+	user, _ := s.repo.GetUserByUsername(username)
 
 	if user == nil {
 		return "", errors.New("user not found")
