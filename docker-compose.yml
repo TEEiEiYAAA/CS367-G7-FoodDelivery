@@ -28,10 +28,11 @@ services:
       - mysql-data:/var/lib/mysql
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 10s
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost && mysql -u root -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1;'"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 60s
 
 volumes:
   mysql-data:
