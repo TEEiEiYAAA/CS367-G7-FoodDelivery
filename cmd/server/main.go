@@ -44,23 +44,23 @@ func main() {
 	// 11 Features List
 
 	// 🏪 Restaurant
-	r.POST("/restaurant", middleware.AuthMiddleware(), restHandler.CreateRestaurant)
+	r.POST("/restaurant", middleware.AuthMiddleware(), middleware.RequireRole("restaurant_owner"), restHandler.CreateRestaurant)
 	r.GET("/restaurant", restHandler.GetRestaurants)
 	r.GET("/restaurant/:id", restHandler.GetRestaurantByID)
-	r.PUT("/restaurant/order/confirm", middleware.AuthMiddleware(), restHandler.ConfirmOrder)
+	r.PUT("/restaurant/order/confirm", middleware.AuthMiddleware(), middleware.RequireRole("restaurant_owner"), restHandler.ConfirmOrder)
 
 	// 🍽 Menu
-	r.POST("/restaurant/:id/menu", middleware.AuthMiddleware(), menuHandler.CreateMenu)
+	r.POST("/restaurant/:id/menu", middleware.AuthMiddleware(), middleware.RequireRole("restaurant_owner"), menuHandler.CreateMenu)
 	r.GET("/restaurant/:id/menu", menuHandler.GetMenu)
 
 	// 🧾 Order
-	r.POST("/order", middleware.AuthMiddleware(), orderHandler.CreateOrder)
-	r.PUT("/order/cancel", middleware.AuthMiddleware(), orderHandler.CancelOrder)
+	r.POST("/order", middleware.AuthMiddleware(), middleware.RequireRole("customer"), orderHandler.CreateOrder)
+	r.PUT("/order/cancel", middleware.AuthMiddleware(), middleware.RequireRole("customer"), orderHandler.CancelOrder)
 	r.GET("/order/:id", orderHandler.GetOrderByID)
-	r.PUT("/order/:id/status", middleware.AuthMiddleware(), orderHandler.UpdateOrderStatus)
+	r.PUT("/order/:id/status", middleware.AuthMiddleware(), middleware.RequireRole("rider"), orderHandler.UpdateOrderStatus)
 
 	// 🛵 Rider
-	r.POST("/order/:id/assign-rider",middleware.AuthMiddleware(),orderHandler.AssignRider)
+	r.POST("/order/:id/assign-rider", middleware.AuthMiddleware(), middleware.RequireRole("rider"), orderHandler.AssignRider)
 
 	// Auth Route
 	r.POST("/login", authHandler.LoginHandler)
