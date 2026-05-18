@@ -10,6 +10,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+const (
+	maxDBRetries = 10
+	retryDelay   = 3 * time.Second
+)
+
 var DB *sql.DB
 
 func InitDB() {
@@ -32,9 +37,16 @@ func InitDB() {
 	DB.SetMaxIdleConns(5)
 	DB.SetConnMaxLifetime(time.Minute * 5)
 
-	err = DB.Ping()
-	if err != nil {
-		log.Fatalf("Database connection failed (Ping error): %v", err)
+	for i := 1; i <= maxDBRetries; i++ {
+		err = DB.Ping()
+		if err == nil {
+			break
+		}
+		log.Printf("Database connection failed (attempt %d/%d): %v", i, maxDBRetries, err)
+		if i == maxDBRetries {
+			log.Fatalf("Could not connect to database after %d attempts", maxDBRetries)
+		}
+		time.Sleep(retryDelay)
 	}
 
 	log.Println("Successfully connected to the database!")
