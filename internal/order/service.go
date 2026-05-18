@@ -78,6 +78,7 @@ func (s *service) UpdateOrderStatus(orderID int, newStatus string, role string) 
 			"preparing": "ready",
 		},
 		"rider": {
+			"confirmed":  "delivering",
 			"ready":      "delivering",
 			"assigned":   "delivering",
 			"delivering": "delivered",

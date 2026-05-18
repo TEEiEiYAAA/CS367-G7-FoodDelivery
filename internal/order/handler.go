@@ -45,7 +45,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, CreateOrderResponse{
-		OrderID:    orderID,
+		ID:         orderID,
 		TotalPrice: totalPrice,
 		Status:     "pending",
 	})
