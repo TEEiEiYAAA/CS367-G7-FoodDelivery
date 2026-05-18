@@ -41,18 +41,24 @@ Handler  →  Service  →  Repository  →  MySQL
 ### Database Schema
 
 ```
+users
+├── id (PK)
+├── username
+├── password
+└── role  [customer | restaurant_owner | rider]
+
 restaurants
 ├── id (PK)
 ├── name
 ├── address
 └── owner_username
 
-menus
+food_items
 ├── id (PK)
 ├── restaurant_id (FK → restaurants)
 ├── name
 ├── price
-└── stock
+└── is_available
 
 orders
 ├── id (PK)
@@ -68,7 +74,7 @@ orders
 order_items
 ├── id (PK)
 ├── order_id (FK → orders)
-├── food_item_id (FK → menus)
+├── food_item_id (FK → food_items)
 ├── quantity
 └── subtotal
 ```
