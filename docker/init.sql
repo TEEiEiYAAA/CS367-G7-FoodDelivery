@@ -45,3 +45,17 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (food_item_id) REFERENCES food_items(id) ON DELETE CASCADE
 );
+
+
+INSERT INTO users (username, password, role) VALUES
+  ('customer1', 'password123', 'customer'),
+  ('owner1', 'password123', 'restaurant_owner'),
+  ('rider1', 'password123', 'rider');
+
+INSERT INTO restaurants (name, address, owner_username) VALUES
+  ('Somtam Shop', '123 Bangkok', 'owner1');
+
+INSERT INTO food_items (restaurant_id, name, price, is_available) VALUES
+  (1, 'Papaya Salad', 60, true),
+  (1, 'Grilled Chicken', 80, true),
+  (1, 'Sticky Rice', 20, true);
