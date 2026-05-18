@@ -1,3 +1,10 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS restaurants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -6,12 +13,12 @@ CREATE TABLE IF NOT EXISTS restaurants (
 );
 
 
-CREATE TABLE IF NOT EXISTS menus (
+CREATE TABLE IF NOT EXISTS food_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     restaurant_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    stock INT DEFAULT 0,
+    price INT NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
 );
 
@@ -36,5 +43,5 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INT NOT NULL,
     subtotal INT NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    FOREIGN KEY (food_item_id) REFERENCES menus(id) ON DELETE CASCADE
+    FOREIGN KEY (food_item_id) REFERENCES food_items(id) ON DELETE CASCADE
 );
