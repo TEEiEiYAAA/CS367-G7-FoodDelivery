@@ -10,43 +10,71 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 )
 
-// สร้าง mockRepository ขึ้นมาเพื่อจำลองพฤติกรรมของฐานข้อมูล
+// mockRepository จำลอง Repository interface สำหรับ service/handler tests
 type mockRepository struct {
 	Repository
-	err error // เราจะใช้ตัวแปรนี้กำหนดว่าอยากให้ Repo คืนค่า error หรือไม่
+	err         error
+	foodItem    *FoodItem
+	noFoodItem  bool
+	order       *Order
 }
 
-// จำลองฟังก์ชัน AssignRider
 func (m *mockRepository) AssignRider(orderID string, riderID int) error {
 	return m.err
 }
 
-// ต้องประกาศฟังก์ชันอื่นๆ ให้ครบตาม Interface (แม้จะไม่ได้ใช้ในเทสนี้)
-func (m *mockRepository) CreateOrder(username string, req CreateOrderRequest) (int64, int, error) {
-	return 0, 0, m.err
+func (m *mockRepository) GetFoodItem(foodItemID, restaurantID int) (*FoodItem, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.noFoodItem {
+		return nil, nil
+	}
+	if m.foodItem != nil {
+		return m.foodItem, nil
+	}
+	return &FoodItem{Price: 50, IsAvailable: true}, nil
 }
-func (m *mockRepository) CancelOrder(username string, orderID int) error { return nil }
+
+func (m *mockRepository) InsertOrderWithItems(username string, restaurantID, totalPrice int, deliveryAddress string, gracePeriodEnd time.Time, items []OrderItemRequest, itemPrices map[int]int) (int64, error) {
+	return 1, m.err
+}
+
+func (m *mockRepository) GetOrder(orderID int) (*Order, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.order != nil {
+		return m.order, nil
+	}
+	return &Order{
+		ID:                     orderID,
+		Status:                 "confirmed",
+		CustomerUsername:       "testuser",
+		CustomerGracePeriodEnd: time.Now().Add(5 * time.Minute),
+	}, nil
+}
+
 func (m *mockRepository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
 	if m.err != nil {
 		return nil, nil, m.err
 	}
-	// จำลองข้อมูลสมมติส่งกลับไป
 	mockOrder := &Order{ID: orderID, Status: "pending", TotalPrice: 500}
 	mockItems := []OrderItem{{ID: 1, OrderID: orderID, FoodItemID: 10, Quantity: 2}}
-
 	return mockOrder, mockItems, nil
 }
 
-func (m *mockRepository) UpdateOrderStatus(orderID int, newStatus string, role string) error {
+func (m *mockRepository) SetOrderStatus(orderID int, status string) error {
 	return m.err
 }
 
-// mockService สำหรับเทส Handler
+// mockService สำหรับเทส Handler โดยตรง
 type mockService struct {
 	Service
 	orderID    int64
@@ -66,10 +94,11 @@ func (m *mockService) UpdateOrderStatus(orderID int, newStatus string, role stri
 	return m.err
 }
 
+// --- Service Tests ---
+
 func TestAssignRider(t *testing.T) {
-	// Case 1: มอบหมายไรเดอร์สำเร็จ (Happy Path)
 	t.Run("Success - Should return nil when repo success", func(t *testing.T) {
-		mockRepo := &mockRepository{err: nil} // จำลองว่า DB ทำงานปกติ
+		mockRepo := &mockRepository{err: nil}
 		service := NewService(mockRepo)
 
 		err := service.AssignRider("1", 101)
@@ -79,9 +108,8 @@ func TestAssignRider(t *testing.T) {
 		}
 	})
 
-	// Case 2: เกิด Error จาก Database (Bad Path)
 	t.Run("Failure - Should return error when repo fails", func(t *testing.T) {
-		mockRepo := &mockRepository{err: errors.New("database connection failed")} // จำลอง DB พัง
+		mockRepo := &mockRepository{err: errors.New("database connection failed")}
 		service := NewService(mockRepo)
 
 		err := service.AssignRider("1", 101)
@@ -92,102 +120,44 @@ func TestAssignRider(t *testing.T) {
 	})
 }
 
-func TestCreateOrderRepository(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %s", err)
-	}
-	defer db.Close()
-
-	repo := NewRepository(db)
-
-	username := "testuser"
-	req := CreateOrderRequest{
-		RestaurantID:    1,
-		DeliveryAddress: "Test Address",
-		Items: []OrderItemRequest{
-			{FoodItemID: 101, Quantity: 2},
-		},
-	}
-
-	t.Run("Success", func(t *testing.T) {
-		mock.ExpectBegin()
-
-		// 1. Mock Check Price & Available
-		rows := sqlmock.NewRows([]string{"price", "is_available"}).AddRow(50, true)
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?")).
-			WithArgs(101, 1).
-			WillReturnRows(rows)
-
-		// 2. Mock Insert Orders
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO orders")).
-			WithArgs(username, 1, 100, req.DeliveryAddress, sqlmock.AnyArg()).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// 3. Mock Insert Order Items
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO order_items")).
-			WithArgs(int64(1), 101, 2, 100).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		mock.ExpectCommit()
-
-		orderID, totalPrice, err := repo.CreateOrder(username, req)
-
-		if err != nil {
-			t.Errorf("expected no error, got %v", err)
-		}
-		if orderID != 1 {
-			t.Errorf("expected orderID 1, got %d", orderID)
-		}
-		if totalPrice != 100 {
-			t.Errorf("expected total price 100, got %d", totalPrice)
-		}
-	})
-
-	t.Run("FoodItemNotFound", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT price, is_available FROM food_items")).
-			WithArgs(101, 1).
-			WillReturnError(sql.ErrNoRows)
-		mock.ExpectRollback()
-
-		_, _, err := repo.CreateOrder(username, req)
-
-		if err == nil || err.Error() != "food item 101 not found in restaurant 1" {
-			t.Errorf("expected specific not found error, got %v", err)
-		}
-	})
-
-	t.Run("FoodItemNotAvailable", func(t *testing.T) {
-		mock.ExpectBegin()
-		rows := sqlmock.NewRows([]string{"price", "is_available"}).AddRow(50, false)
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT price, is_available FROM food_items")).
-			WithArgs(101, 1).
-			WillReturnRows(rows)
-		mock.ExpectRollback()
-
-		_, _, err := repo.CreateOrder(username, req)
-
-		if err == nil || err.Error() != "food item 101 is not available" {
-			t.Errorf("expected not available error, got %v", err)
-		}
-	})
-}
-
 func TestCreateOrderService(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockRepo := &mockRepository{err: nil}
 		service := NewService(mockRepo)
 
-		username := "testuser"
-		req := CreateOrderRequest{
-			RestaurantID: 1,
-			Items:        []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
-		}
-
-		_, _, err := service.CreateOrder(username, req)
+		_, _, err := service.CreateOrder("testuser", CreateOrderRequest{
+			RestaurantID:    1,
+			DeliveryAddress: "Bangkok",
+			Items:           []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+		})
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("FoodItemNotFound", func(t *testing.T) {
+		mockRepo := &mockRepository{noFoodItem: true}
+		service := NewService(mockRepo)
+
+		_, _, err := service.CreateOrder("testuser", CreateOrderRequest{
+			RestaurantID: 1,
+			Items:        []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+		})
+		if err == nil || !strings.Contains(err.Error(), "not found") {
+			t.Errorf("expected not found error, got %v", err)
+		}
+	})
+
+	t.Run("FoodItemNotAvailable", func(t *testing.T) {
+		mockRepo := &mockRepository{foodItem: &FoodItem{Price: 50, IsAvailable: false}}
+		service := NewService(mockRepo)
+
+		_, _, err := service.CreateOrder("testuser", CreateOrderRequest{
+			RestaurantID: 1,
+			Items:        []OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+		})
+		if err == nil || !strings.Contains(err.Error(), "not available") {
+			t.Errorf("expected not available error, got %v", err)
 		}
 	})
 
@@ -196,9 +166,12 @@ func TestCreateOrderService(t *testing.T) {
 		mockRepo := &mockRepository{err: repoErr}
 		service := NewService(mockRepo)
 
-		_, _, err := service.CreateOrder("user", CreateOrderRequest{})
-		if err != repoErr {
-			t.Errorf("expected repo error, got %v", err)
+		_, _, err := service.CreateOrder("user", CreateOrderRequest{
+			RestaurantID: 1,
+			Items:        []OrderItemRequest{{FoodItemID: 101, Quantity: 1}},
+		})
+		if err == nil {
+			t.Errorf("expected error, got nil")
 		}
 	})
 }
@@ -213,22 +186,140 @@ func TestGetOrderByID(t *testing.T) {
 		if err != nil {
 			t.Errorf("Expected nil, got %v", err)
 		}
-
-		// ตรวจสอบว่า order ไม่เป็น nil ก่อนเช็ก ID (กันโปรแกรมแครช)
 		if order == nil {
 			t.Fatal("Expected order object, got nil")
 		}
-
 		if order.ID != 1 {
 			t.Errorf("Expected ID 1, got %d", order.ID)
 		}
-
-		// ตรวจสอบตัวแปร items เพื่อให้คอมไพเลอร์ยอมให้ผ่าน
 		if len(items) == 0 {
 			t.Error("Expected items, but got empty list")
 		}
 	})
 }
+
+func TestUpdateOrderStatusService(t *testing.T) {
+	t.Run("Success - restaurant: confirmed → preparing", func(t *testing.T) {
+		mockRepo := &mockRepository{err: nil}
+		svc := NewService(mockRepo)
+
+		err := svc.UpdateOrderStatus(1, "preparing", "restaurant")
+		if err != nil {
+			t.Errorf("expected nil, got %v", err)
+		}
+	})
+
+	t.Run("Success - rider: assigned → delivering", func(t *testing.T) {
+		mockRepo := &mockRepository{order: &Order{ID: 2, Status: "assigned"}}
+		svc := NewService(mockRepo)
+
+		err := svc.UpdateOrderStatus(2, "delivering", "rider")
+		if err != nil {
+			t.Errorf("expected nil, got %v", err)
+		}
+	})
+
+	t.Run("Failure - Order not found", func(t *testing.T) {
+		mockRepo := &mockRepository{err: errors.New("order not found")}
+		svc := NewService(mockRepo)
+
+		err := svc.UpdateOrderStatus(999, "preparing", "restaurant")
+		if err == nil || err.Error() != "order not found" {
+			t.Errorf("expected 'order not found', got %v", err)
+		}
+	})
+
+	t.Run("Failure - Invalid role (customer)", func(t *testing.T) {
+		mockRepo := &mockRepository{err: nil}
+		svc := NewService(mockRepo)
+
+		err := svc.UpdateOrderStatus(1, "preparing", "customer")
+		if err == nil || !strings.Contains(err.Error(), "forbidden") {
+			t.Errorf("expected forbidden error, got %v", err)
+		}
+	})
+
+	t.Run("Failure - Invalid transition (pending → delivered)", func(t *testing.T) {
+		mockRepo := &mockRepository{order: &Order{ID: 1, Status: "pending"}}
+		svc := NewService(mockRepo)
+
+		err := svc.UpdateOrderStatus(1, "delivered", "rider")
+		if err == nil || !strings.Contains(err.Error(), "invalid transition") {
+			t.Errorf("expected invalid transition error, got %v", err)
+		}
+	})
+}
+
+// --- Repository Tests ---
+
+func TestGetFoodItemRepository(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("failed to open sqlmock: %s", err)
+		}
+		defer db.Close()
+		repo := NewRepository(db)
+
+		rows := sqlmock.NewRows([]string{"price", "is_available"}).AddRow(50, true)
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?")).
+			WithArgs(101, 1).
+			WillReturnRows(rows)
+
+		item, err := repo.GetFoodItem(101, 1)
+		if err != nil || item == nil || item.Price != 50 || !item.IsAvailable {
+			t.Errorf("expected item{50, true}, got %v %v", item, err)
+		}
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		db, mock, _ := sqlmock.New()
+		defer db.Close()
+		repo := NewRepository(db)
+
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?")).
+			WithArgs(999, 1).
+			WillReturnError(sql.ErrNoRows)
+
+		item, err := repo.GetFoodItem(999, 1)
+		if err != nil || item != nil {
+			t.Errorf("expected nil item and nil error, got %v %v", item, err)
+		}
+	})
+}
+
+func TestInsertOrderWithItemsRepository(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to open sqlmock: %s", err)
+	}
+	defer db.Close()
+	repo := NewRepository(db)
+
+	t.Run("Success", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO orders")).
+			WithArgs("testuser", 1, 100, "Bangkok", sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO order_items")).
+			WithArgs(int64(1), 101, 2, 100).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		orderID, err := repo.InsertOrderWithItems(
+			"testuser", 1, 100, "Bangkok",
+			time.Now().Add(5*time.Minute),
+			[]OrderItemRequest{{FoodItemID: 101, Quantity: 2}},
+			map[int]int{101: 50},
+		)
+		if err != nil || orderID != 1 {
+			t.Errorf("expected orderID 1, got %d %v", orderID, err)
+		}
+	})
+}
+
+
+// --- Handler Tests ---
 
 func TestCreateOrderHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -262,7 +353,7 @@ func TestCreateOrderHandler(t *testing.T) {
 		handler := NewHandler(mockSvc)
 
 		r := gin.Default()
-		r.POST("/order", handler.CreateOrder) // ไม่ได้ set username
+		r.POST("/order", handler.CreateOrder)
 
 		reqBody, _ := json.Marshal(CreateOrderRequest{})
 		req, _ := http.NewRequest("POST", "/order", bytes.NewBuffer(reqBody))
@@ -291,75 +382,3 @@ func TestCreateOrderHandler(t *testing.T) {
 	})
 }
 
-func TestUpdateOrderStatusRepository(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %s", err)
-	}
-	defer db.Close()
-
-	repo := NewRepository(db)
-
-	t.Run("Success - restaurant: confirmed → preparing", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
-
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
-			WithArgs("preparing", 1).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		err := repo.UpdateOrderStatus(1, "preparing", "restaurant")
-		if err != nil {
-			t.Errorf("Expected nil, got %v", err)
-		}
-	})
-
-	t.Run("Success - rider: assigned → delivering", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(2).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("assigned"))
-
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE orders SET status = ? WHERE id = ?")).
-			WithArgs("delivering", 2).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		err := repo.UpdateOrderStatus(2, "delivering", "rider")
-		if err != nil {
-			t.Errorf("Expected nil, got %v", err)
-		}
-	})
-
-	t.Run("Failure - Order not found", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(999).
-			WillReturnError(sql.ErrNoRows)
-
-		err := repo.UpdateOrderStatus(999, "preparing", "restaurant")
-		if err == nil || err.Error() != "order not found" {
-			t.Errorf("Expected 'order not found', got %v", err)
-		}
-	})
-
-	t.Run("Failure - Invalid role (customer)", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("confirmed"))
-
-		err := repo.UpdateOrderStatus(1, "preparing", "customer")
-		if err == nil || !strings.Contains(err.Error(), "forbidden") {
-			t.Errorf("Expected forbidden error, got %v", err)
-		}
-	})
-
-	t.Run("Failure - Invalid transition (pending → delivered)", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM orders WHERE id = ?")).
-			WithArgs(1).
-			WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow("pending"))
-
-		err := repo.UpdateOrderStatus(1, "delivered", "rider")
-		if err == nil || !strings.Contains(err.Error(), "invalid transition") {
-			t.Errorf("Expected invalid transition error, got %v", err)
-		}
-	})
-}

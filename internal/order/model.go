@@ -53,3 +53,9 @@ type CancelOrderRequest struct {
 type UpdateOrderStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
+
+// FoodItem ใช้สำหรับ query ราคาและสถานะในขั้นตอน CreateOrder
+type FoodItem struct {
+	Price       int
+	IsAvailable bool
+}
