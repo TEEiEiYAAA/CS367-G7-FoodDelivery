@@ -97,7 +97,7 @@ func TestAssignRiderHandler(t *testing.T) {
 	})
 
 	t.Run("Failure - Invalid JSON body", func(t *testing.T) {
-		h := NewHandler(&mockRepository{})
+		h := NewHandler(NewService(&mockRepository{}))
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -133,6 +133,7 @@ func TestUpdateOrderStatusHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Success - restaurant changes status to preparing (200)", func(t *testing.T) {
+		// default mock order มี status="confirmed" → restaurant: confirmed→preparing ถูกต้อง
 		mockRepo := &mockRepository{err: nil}
 		h := NewHandler(NewService(mockRepo))
 
@@ -151,7 +152,8 @@ func TestUpdateOrderStatusHandler(t *testing.T) {
 	})
 
 	t.Run("Success - rider changes status to delivering (200)", func(t *testing.T) {
-		mockRepo := &mockRepository{err: nil}
+		// กำหนด order ที่มี status="ready" → rider: ready→delivering ถูกต้อง
+		mockRepo := &mockRepository{order: &Order{ID: 1, Status: "ready"}}
 		h := NewHandler(NewService(mockRepo))
 
 		w := httptest.NewRecorder()
@@ -234,7 +236,8 @@ func TestUpdateOrderStatusHandler(t *testing.T) {
 	})
 
 	t.Run("Failure - Forbidden role (403)", func(t *testing.T) {
-		mockRepo := &mockRepository{err: errors.New("forbidden: role 'customer' cannot update order status")}
+		// role="customer" ไม่มีใน allowed map → service return forbidden โดยตรง
+		mockRepo := &mockRepository{err: nil}
 		h := NewHandler(NewService(mockRepo))
 
 		w := httptest.NewRecorder()
@@ -252,7 +255,8 @@ func TestUpdateOrderStatusHandler(t *testing.T) {
 	})
 
 	t.Run("Failure - Invalid transition (422)", func(t *testing.T) {
-		mockRepo := &mockRepository{err: errors.New("invalid transition: 'pending' → 'delivered' is not allowed for role 'rider'")}
+		// status="pending", rider พยายาม→delivered → invalid transition
+		mockRepo := &mockRepository{order: &Order{ID: 1, Status: "pending"}}
 		h := NewHandler(NewService(mockRepo))
 
 		w := httptest.NewRecorder()

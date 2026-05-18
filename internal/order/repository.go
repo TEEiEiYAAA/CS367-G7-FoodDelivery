@@ -7,10 +7,11 @@ import (
 )
 
 type Repository interface {
-	CreateOrder(username string, req CreateOrderRequest) (int64, int, error)
-	CancelOrder(username string, orderID int) error
+	GetFoodItem(foodItemID, restaurantID int) (*FoodItem, error)
+	InsertOrderWithItems(username string, restaurantID, totalPrice int, deliveryAddress string, gracePeriodEnd time.Time, items []OrderItemRequest, itemPrices map[int]int) (int64, error)
+	GetOrder(orderID int) (*Order, error)
+	SetOrderStatus(orderID int, status string) error
 	GetOrderByID(orderID int) (*Order, []OrderItem, error)
-	UpdateOrderStatus(orderID int, newStatus string, role string) error
 	AssignRider(orderID string, riderID int) error
 }
 
@@ -22,13 +23,25 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-// CreateOrder สร้าง order ใหม่ใน transaction
-// คืน (orderID, totalPrice, error)
-func (r *repository) CreateOrder(username string, req CreateOrderRequest) (int64, int, error) {
-	// เริ่ม transaction
+func (r *repository) GetFoodItem(foodItemID, restaurantID int) (*FoodItem, error) {
+	var item FoodItem
+	err := r.db.QueryRow(
+		"SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?",
+		foodItemID, restaurantID,
+	).Scan(&item.Price, &item.IsAvailable)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *repository) InsertOrderWithItems(username string, restaurantID, totalPrice int, deliveryAddress string, gracePeriodEnd time.Time, items []OrderItemRequest, itemPrices map[int]int) (int64, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 	defer func() {
 		if err != nil {
@@ -36,110 +49,57 @@ func (r *repository) CreateOrder(username string, req CreateOrderRequest) (int64
 		}
 	}()
 
-	// คำนวณ total_price โดย query ราคาจาก food_items
-	totalPrice := 0
-	type itemDetail struct {
-		price    int
-		quantity int
-	}
-	details := make([]itemDetail, 0, len(req.Items))
-
-	for _, item := range req.Items {
-		var price int
-		var isAvailable bool
-		err = tx.QueryRow(
-			"SELECT price, is_available FROM food_items WHERE id = ? AND restaurant_id = ?",
-			item.FoodItemID, req.RestaurantID,
-		).Scan(&price, &isAvailable)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return 0, 0, fmt.Errorf("food item %d not found in restaurant %d", item.FoodItemID, req.RestaurantID)
-			}
-			return 0, 0, err
-		}
-		if !isAvailable {
-			return 0, 0, fmt.Errorf("food item %d is not available", item.FoodItemID)
-		}
-		details = append(details, itemDetail{price: price, quantity: item.Quantity})
-		totalPrice += price * item.Quantity
-	}
-
-	// grace period 5 นาที (ลูกค้ายกเลิกได้ใน 5 นาที)
-	gracePeriodEnd := time.Now().Add(5 * time.Minute)
-
-	// INSERT orders
 	result, err := tx.Exec(
 		`INSERT INTO orders
 			(customer_username, restaurant_id, rider_id, status, total_price, delivery_address, created_at, customer_grace_period_end)
 		 VALUES (?, ?, NULL, 'pending', ?, ?, NOW(), ?)`,
-		username, req.RestaurantID, totalPrice, req.DeliveryAddress, gracePeriodEnd,
+		username, restaurantID, totalPrice, deliveryAddress, gracePeriodEnd,
 	)
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
 	orderID, err := result.LastInsertId()
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	// INSERT order_items
-	for i, item := range req.Items {
-		subtotal := details[i].price * details[i].quantity
+	for _, item := range items {
+		subtotal := itemPrices[item.FoodItemID] * item.Quantity
 		_, err = tx.Exec(
 			"INSERT INTO order_items (order_id, food_item_id, quantity, subtotal) VALUES (?, ?, ?, ?)",
 			orderID, item.FoodItemID, item.Quantity, subtotal,
 		)
 		if err != nil {
-			return 0, 0, err
+			return 0, err
 		}
 	}
 
 	err = tx.Commit()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return orderID, totalPrice, nil
+	return orderID, err
 }
 
-// CancelOrder ตรวจสิทธิ์และ grace period ก่อนเปลี่ยน status เป็น cancelled
-func (r *repository) CancelOrder(username string, orderID int) error {
-	var dbUsername, status string
-	var gracePeriodEnd time.Time
-
+func (r *repository) GetOrder(orderID int) (*Order, error) {
+	var order Order
 	err := r.db.QueryRow(
-		"SELECT customer_username, status, customer_grace_period_end FROM orders WHERE id = ?",
+		`SELECT id, customer_username, restaurant_id, status, total_price, delivery_address, created_at, customer_grace_period_end
+		 FROM orders WHERE id = ?`,
 		orderID,
-	).Scan(&dbUsername, &status, &gracePeriodEnd)
+	).Scan(&order.ID, &order.CustomerUsername, &order.RestaurantID, &order.Status, &order.TotalPrice, &order.DeliveryAddress, &order.CreatedAt, &order.CustomerGracePeriodEnd)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("order %d not found", orderID)
+	}
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("order %d not found", orderID)
-		}
-		return err
+		return nil, err
 	}
+	return &order, nil
+}
 
-	// เช็คว่าเป็นเจ้าของ order นี้จริง
-	if dbUsername != username {
-		return fmt.Errorf("forbidden: this order does not belong to you")
-	}
-
-	// เช็คว่า status ยังเป็น pending อยู่
-	if status != "pending" {
-		return fmt.Errorf("order cannot be cancelled: current status is '%s'", status)
-	}
-
-	// เช็ค grace period
-	if time.Now().After(gracePeriodEnd) {
-		return fmt.Errorf("cancellation window has expired")
-	}
-
-	_, err = r.db.Exec(
-		"UPDATE orders SET status = 'cancelled' WHERE id = ?",
-		orderID,
-	)
+func (r *repository) SetOrderStatus(orderID int, status string) error {
+	_, err := r.db.Exec("UPDATE orders SET status = ? WHERE id = ?", status, orderID)
 	return err
 }
+
 func (r *repository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
 	var order Order
 	queryOrder := "SELECT id, customer_username, restaurant_id, status, total_price FROM orders WHERE id = ?"
@@ -164,45 +124,14 @@ func (r *repository) GetOrderByID(orderID int) (*Order, []OrderItem, error) {
 		items = append(items, item)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
 	return &order, items, nil
-}
-func (r *repository) UpdateOrderStatus(orderID int, newStatus string, role string) error {
-
-	var currentStatus string
-	err := r.db.QueryRow("SELECT status FROM orders WHERE id = ?", orderID).Scan(&currentStatus)
-	if err != nil {
-		return fmt.Errorf("order not found")
-	}
-
-	allowed := map[string]map[string]string{
-		"restaurant": {
-			"confirmed": "preparing",
-			"preparing": "ready",
-		},
-		"rider": {
-			"ready":      "delivering",
-			"assigned":   "delivering",
-			"delivering": "delivered",
-		},
-	}
-
-	transitions, roleExists := allowed[role]
-	if !roleExists {
-		return fmt.Errorf("forbidden: role '%s' cannot update order status", role)
-	}
-
-	expectedNext, ok := transitions[currentStatus]
-	if !ok || expectedNext != newStatus {
-		return fmt.Errorf("invalid transition: '%s' → '%s' is not allowed for role '%s'", currentStatus, newStatus, role)
-	}
-
-	_, err = r.db.Exec("UPDATE orders SET status = ? WHERE id = ?", newStatus, orderID)
-	return err
 }
 
 func (r *repository) AssignRider(orderID string, riderID int) error {
-	query := "UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?"
-
-	_, err := r.db.Exec(query, riderID, orderID)
+	_, err := r.db.Exec("UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?", riderID, orderID)
 	return err
 }
