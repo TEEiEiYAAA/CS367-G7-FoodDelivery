@@ -28,10 +28,6 @@ func ValidateToken(tokenString string) (jwt.MapClaims, error) {
 		return nil, err
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, err
-	}
-
+	claims := token.Claims.(jwt.MapClaims)
 	return claims, nil
 }
