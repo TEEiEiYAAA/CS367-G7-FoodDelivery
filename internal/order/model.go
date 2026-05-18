@@ -39,7 +39,7 @@ type OrderItemRequest struct {
 
 // CreateOrderResponse คือ response หลัง POST /order สำเร็จ
 type CreateOrderResponse struct {
-	OrderID    int64  `json:"order_id"`
+	ID         int64  `json:"id"`
 	TotalPrice int    `json:"total_price"`
 	Status     string `json:"status"`
 }
