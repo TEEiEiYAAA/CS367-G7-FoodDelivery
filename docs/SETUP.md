@@ -151,63 +151,80 @@ order_items
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) และ Docker Compose
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (รองรับทั้ง Windows, macOS, Linux)
+- [Docker Hub](https://hub.docker.com/) account (สำหรับดึง image)
 
-### วิธีรันด้วย Docker Compose (แนะนำ)
+> ไม่จำเป็นต้องติดตั้ง Go หรือ MySQL เพิ่มเติม — ทุกอย่างรันผ่าน Docker
 
-```bash
-# 1. Clone repository
-git clone https://github.com/CS367-G7/CS367-G7-FoodDelivery.git
-cd CS367-G7-FoodDelivery
+---
 
-# 2. Start services (API + MySQL)
-docker compose up --build
+### Docker Image
+
+API Image พร้อมใช้งานบน DockerHub แล้ว ไม่ต้อง build เอง
+
+```
+chonrathan/cs367-food-delivery:latest
 ```
 
-API จะพร้อมใช้งานที่ `http://localhost:8080`
+---
 
-หยุด services:
+### วิธีรันด้วย Docker Compose
+
+**1. Clone repository**
+```bash
+git clone https://github.com/CS367-G7/CS367-G7-FoodDelivery.git
+cd CS367-G7-FoodDelivery
+```
+
+**2. เปิด Docker Desktop** ให้พร้อมใช้งานก่อน
+
+**3. Start ระบบ**
+```bash
+docker compose up
+```
+
+Docker จะดึง API image จาก DockerHub และ start MySQL อัตโนมัติ
+
+รอจนเห็นข้อความ:
+```
+api-1  | Successfully connected to the database!
+api-1  | Server running on :8080
+```
+
+**4. เรียกใช้งาน API ได้ที่**
+```
+http://localhost:8080
+```
+
+---
+
+### หยุดระบบ
+
 ```bash
 docker compose down
 ```
 
-ลบ volume ของ database ด้วย:
+หากต้องการลบข้อมูลใน database ด้วย:
 ```bash
 docker compose down -v
 ```
 
 ---
 
-### วิธีรันโดยไม่ใช้ Docker (Manual)
+### วิธีรันด้วย Docker Compose แบบ Build เอง (ไม่ใช้ DockerHub Image)
 
-**Prerequisites:** Go 1.21+, MySQL 8.0
+หากต้องการ build image จาก source code เอง ให้แก้ [docker-compose.yml](../docker-compose.yml) โดยแทนที่ `image:` ด้วย `build:`:
 
-**1. ตั้งค่า MySQL**
-
-```sql
-CREATE DATABASE food_delivery_db;
+```yaml
+api:
+  build:
+    context: .
+    dockerfile: Dockerfile
 ```
 
-จากนั้น import schema:
+จากนั้นรัน:
 ```bash
-mysql -u root -p food_delivery_db < docker/init.sql
-```
-
-**2. ตั้งค่า Environment Variables**
-
-```bash
-export DB_HOST=127.0.0.1
-export DB_PORT=3306
-export DB_USER=root
-export DB_PASSWORD=password
-export DB_NAME=food_delivery_db
-```
-
-**3. รัน Server**
-
-```bash
-go mod download
-go run ./cmd/server
+docker compose up --build
 ```
 
 ---
@@ -222,6 +239,39 @@ go run ./cmd/server
 | `DB_PASSWORD` | `password` | MySQL password |
 | `DB_NAME` | `food_delivery_db` | Database name |
 | `GIN_MODE` | `debug` | Gin mode (`debug` / `release`) |
+
+---
+
+## API Testing (Postman)
+
+ไฟล์ Postman Collection และ Environment อยู่ใน folder `postman/`
+
+```
+postman/
+├── CS367-G7-FoodDelivery.postman_collection.json
+└── CS367-G7.postman_environment.json
+```
+
+### วิธี Import เข้า Postman
+
+1. เปิด **Postman**
+2. คลิก **Import** แล้วเลือกไฟล์ทั้งสองจาก folder `postman/`
+3. เลือก Environment **CS367-G7** ที่มุมขวาบน
+
+### วิธีรัน Collection Runner
+
+1. คลิกขวาที่ Collection **CS367-G7-FoodDelivery**
+2. เลือก **Run collection**
+3. เลือก Environment **CS367-G7**
+4. คลิก **Run CS367-G7-FoodDelivery**
+
+> ระบบต้องรันอยู่ก่อน (`docker compose up`) และ API พร้อมที่ `http://localhost:8080`
+
+### ผลการทดสอบ
+
+| Tests | Passed | Failed |
+|-------|--------|--------|
+| 23 | 23 | 0 |
 
 ---
 
