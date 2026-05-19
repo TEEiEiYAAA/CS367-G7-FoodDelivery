@@ -4,6 +4,28 @@
 
 ---
 
+## Project Structure
+
+```
+CS367-G7-FoodDelivery/
+├── cmd/server/          # entry point
+├── config/              # database connection
+├── internal/
+│   ├── auth/            # login, JWT
+│   ├── menu/            # menu endpoints
+│   ├── middleware/      # auth & role middleware
+│   ├── order/           # order endpoints
+│   └── restaurant/      # restaurant endpoints
+├── pkg/jwt/             # JWT helper
+├── docker/              # init.sql
+├── docs/                # SETUP.md, swagger files
+├── postman/             # Postman collection & environment
+├── Dockerfile
+└── docker-compose.yml
+```
+
+---
+
 ## System Overview
 
 ```
@@ -25,18 +47,33 @@
 
 ### Architecture
 
-ระบบใช้ layered architecture แบ่งเป็น 3 ชั้น โดยมี Model เป็น shared struct ที่ทุกชั้นใช้ร่วมกัน
+ระบบใช้ **Layered Architecture** แบ่งเป็น 3 ชั้น
 
 ```
-Handler  →  Service  →  Repository  →  MySQL
-   ↑            ↑            ↑
-         Model (shared structs)
-```
+Client (HTTP Request)
+        │
+        ▼
+┌───────────────┐
+│    Handler    │  รับ request, validate input, ส่ง response
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│    Service    │  business logic
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│  Repository   │  query ฐานข้อมูล
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│     MySQL     │
+└───────────────┘
 
-- **Handler** — รับ HTTP request, validate input, ส่ง response
-- **Service** — business logic
-- **Repository** — query ฐานข้อมูล
-- **Model** — โครงสร้างข้อมูล (struct) ที่ทุกชั้นใช้ร่วมกัน ไม่ใช่ชั้นแยกต่างหาก
+     Model (shared structs ที่ทุกชั้นใช้ร่วมกัน)
+```
 
 ### Database Schema
 
@@ -106,44 +143,52 @@ order_items
 
 > Endpoint ที่ต้องการ Auth ให้ส่ง header: `Authorization: Bearer <JWT_TOKEN>`
 
+### Default Users (สำหรับทดสอบ)
+
+| Username | Password | Role |
+|----------|----------|------|
+| `customer1` | `password123` | `customer` |
+| `owner1` | `password123` | `restaurant_owner` |
+| `rider1` | `password123` | `rider` |
+
 ---
 
 ### Restaurant
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/restaurant` | ✅ | สร้างร้านอาหาร |
-| GET | `/restaurant` | - | ดูร้านอาหารทั้งหมด |
-| GET | `/restaurant/:id` | - | ดูข้อมูลร้านอาหาร |
-| PUT | `/restaurant/order/confirm` | ✅ | ยืนยันออเดอร์ (ฝั่งร้าน) |
+| Method | Endpoint | Auth | Role | Description |
+|--------|----------|------|------|-------------|
+| POST | `/restaurant` | ✅ | `restaurant_owner` | สร้างร้านอาหาร |
+| GET | `/restaurant` | - | ทุก role | ดูร้านอาหารทั้งหมด |
+| GET | `/restaurant/:id` | - | ทุก role | ดูข้อมูลร้านอาหาร |
+| PUT | `/restaurant/order/confirm` | ✅ | `restaurant_owner` | ยืนยันออเดอร์ (ฝั่งร้าน) |
 
 ---
 
 ### Menu
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/restaurant/:id/menu` | ✅ | เพิ่มเมนูในร้าน |
-| GET | `/restaurant/:id/menu` | - | ดูเมนูของร้าน |
+| Method | Endpoint | Auth | Role | Description |
+|--------|----------|------|------|-------------|
+| POST | `/restaurant/:id/menu` | ✅ | `restaurant_owner` | เพิ่มเมนูในร้าน |
+| GET | `/restaurant/:id/menu` | - | ทุก role | ดูเมนูของร้าน |
 
 ---
 
 ### Order
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/order` | ✅ | สร้างคำสั่งซื้อ |
-| GET | `/order/:id` | - | ดูรายละเอียดออเดอร์ |
-| PUT | `/order/cancel` | ✅ | ลูกค้ายกเลิกออเดอร์ |
-| PUT | `/order/:id/status` | ✅ | อัปเดตสถานะออเดอร์ |
+| Method | Endpoint | Auth | Role | Description |
+|--------|----------|------|------|-------------|
+| POST | `/order` | ✅ | `customer` | สร้างคำสั่งซื้อ |
+| GET | `/order/:id` | - | ทุก role | ดูรายละเอียดออเดอร์ |
+| PUT | `/order/cancel` | ✅ | `customer` | ลูกค้ายกเลิกออเดอร์ |
+| PUT | `/order/:id/status` | ✅ | `rider` | อัปเดตสถานะออเดอร์ |
 
 ---
 
 ### Rider
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/order/:id/assign-rider` | ✅ | มอบหมายไรเดอร์ให้ออเดอร์ |
+| Method | Endpoint | Auth | Role | Description |
+|--------|----------|------|------|-------------|
+| POST | `/order/:id/assign-rider` | ✅ | `rider` | มอบหมายไรเดอร์ให้ออเดอร์ |
 
 ---
 
@@ -172,7 +217,7 @@ chonrathan/cs367-food-delivery:latest
 
 **1. Clone repository**
 ```bash
-git clone https://github.com/CS367-G7/CS367-G7-FoodDelivery.git
+git clone https://github.com/TEEiEiYAAA/CS367-G7-FoodDelivery.git
 cd CS367-G7-FoodDelivery
 ```
 
@@ -233,12 +278,12 @@ docker compose up --build
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_HOST` | `127.0.0.1` | MySQL host |
+| `DB_HOST` | `db` | MySQL host (ชื่อ service ใน Docker) |
 | `DB_PORT` | `3306` | MySQL port |
 | `DB_USER` | `root` | MySQL username |
 | `DB_PASSWORD` | `password` | MySQL password |
 | `DB_NAME` | `food_delivery_db` | Database name |
-| `GIN_MODE` | `debug` | Gin mode (`debug` / `release`) |
+| `GIN_MODE` | `release` | Gin mode (`debug` / `release`) |
 
 ---
 
@@ -275,7 +320,7 @@ postman/
 
 ---
 
-## Running Tests
+## Unit Testing & Coverage
 
 ```bash
 go test ./...
@@ -286,3 +331,15 @@ go test ./...
 go test ./... -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
+
+---
+
+## API Documentation (Swagger)
+
+เมื่อระบบรันแล้ว เปิด Swagger UI ได้ที่:
+
+```
+http://localhost:8080/swagger/index.html
+```
+
+> ระบบต้องรันอยู่ก่อน (`docker compose up`)
