@@ -39,7 +39,10 @@
 
 ---
 ## Feature
-มีทั้งหมด 11 Features
+มีทั้งหมด 12 Features
+### 🔐 Auth
+  POST /login (เข้าสู่ระบบ)
+  
 ### 🏪 Restaurant
 POST /restaurant (สร้างร้านอาหาร)
 
