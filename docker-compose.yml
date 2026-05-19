@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: chonrathan/cs367-food-delivery:latest
     ports:
       - "8080:8080"
     depends_on:
