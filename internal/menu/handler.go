@@ -15,7 +15,15 @@ func NewHandler(s Service) *Handler {
 	return &Handler{service: s}
 }
 
-// POST /restaurant/{id}/menu (เพิ่มเมนู)
+// @Summary  เพิ่มเมนูในร้าน
+// @Tags     Menu
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    id path int true "Restaurant ID"
+// @Param    body body CreateMenuRequest true "body"
+// @Success  201 {object} Menu
+// @Router   /restaurant/{id}/menu [post]
 func (h *Handler) CreateMenu(c *gin.Context) {
 	restaurantID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -38,7 +46,12 @@ func (h *Handler) CreateMenu(c *gin.Context) {
 	c.JSON(http.StatusCreated, created)
 }
 
-// GET /restaurant/{id}/menu (ดูเมนู)
+// @Summary ดูเมนูของร้าน
+// @Tags    Menu
+// @Produce json
+// @Param   id path int true "Restaurant ID"
+// @Success 200 {array} Menu
+// @Router  /restaurant/{id}/menu [get]
 func (h *Handler) GetMenu(c *gin.Context) {
 	restaurantID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

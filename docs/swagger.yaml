@@ -12,6 +12,105 @@ definitions:
       token:
         type: string
     type: object
+  menu.CreateMenuRequest:
+    properties:
+      name:
+        type: string
+      price:
+        type: number
+    required:
+    - name
+    - price
+    type: object
+  menu.Menu:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      restaurant_id:
+        type: integer
+    type: object
+  order.CancelOrderRequest:
+    properties:
+      order_id:
+        type: integer
+    required:
+    - order_id
+    type: object
+  order.CreateOrderRequest:
+    properties:
+      delivery_address:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/order.OrderItemRequest'
+        minItems: 1
+        type: array
+      restaurant_id:
+        type: integer
+    required:
+    - delivery_address
+    - items
+    - restaurant_id
+    type: object
+  order.CreateOrderResponse:
+    properties:
+      id:
+        type: integer
+      status:
+        type: string
+      total_price:
+        type: integer
+    type: object
+  order.OrderItemRequest:
+    properties:
+      food_item_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - food_item_id
+    - quantity
+    type: object
+  order.UpdateOrderStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  restaurant.ConfirmOrderRequest:
+    properties:
+      order_id:
+        type: integer
+    required:
+    - order_id
+    type: object
+  restaurant.CreateRestaurantRequest:
+    properties:
+      address:
+        type: string
+      name:
+        type: string
+    required:
+    - address
+    - name
+    type: object
+  restaurant.Restaurant:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner_username:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -46,6 +145,253 @@ paths:
       summary: Login
       tags:
       - Auth
+  /order:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/order.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/order.CreateOrderResponse'
+      security:
+      - BearerAuth: []
+      summary: สร้างคำสั่งซื้อ
+      tags:
+      - Order
+  /order/{id}:
+    get:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: ดูรายละเอียดออเดอร์
+      tags:
+      - Order
+  /order/{id}/assign-rider:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: มอบหมายไรเดอร์ให้ออเดอร์
+      tags:
+      - Rider
+  /order/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/order.UpdateOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: อัปเดตสถานะออเดอร์
+      tags:
+      - Order
+  /order/cancel:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/order.CancelOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: ลูกค้ายกเลิกออเดอร์
+      tags:
+      - Order
+  /restaurant:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/restaurant.Restaurant'
+            type: array
+      summary: ดูร้านอาหารทั้งหมด
+      tags:
+      - Restaurant
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/restaurant.CreateRestaurantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/restaurant.Restaurant'
+      security:
+      - BearerAuth: []
+      summary: สร้างร้านอาหาร
+      tags:
+      - Restaurant
+  /restaurant/{id}:
+    get:
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/restaurant.Restaurant'
+      summary: ดูข้อมูลร้านอาหาร
+      tags:
+      - Restaurant
+  /restaurant/{id}/menu:
+    get:
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/menu.Menu'
+            type: array
+      summary: ดูเมนูของร้าน
+      tags:
+      - Menu
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/menu.CreateMenuRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/menu.Menu'
+      security:
+      - BearerAuth: []
+      summary: เพิ่มเมนูในร้าน
+      tags:
+      - Menu
+  /restaurant/order/confirm:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/restaurant.ConfirmOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: ยืนยันออเดอร์ (ฝั่งร้าน)
+      tags:
+      - Restaurant
 securityDefinitions:
   BearerAuth:
     in: header

@@ -16,7 +16,14 @@ func NewHandler(s Service) *Handler {
 	return &Handler{service: s}
 }
 
-// POST /restaurant
+// @Summary  สร้างร้านอาหาร
+// @Tags     Restaurant
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    body body CreateRestaurantRequest true "body"
+// @Success  201 {object} Restaurant
+// @Router   /restaurant [post]
 func (h *Handler) CreateRestaurant(c *gin.Context) {
 	var req CreateRestaurantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -49,7 +56,11 @@ func (h *Handler) CreateRestaurant(c *gin.Context) {
 	c.JSON(http.StatusCreated, created)
 }
 
-// GET /restaurant
+// @Summary ดูร้านอาหารทั้งหมด
+// @Tags    Restaurant
+// @Produce json
+// @Success 200 {array} Restaurant
+// @Router  /restaurant [get]
 func (h *Handler) GetRestaurants(c *gin.Context) {
 	list, err := h.service.GetRestaurants()
 	if err != nil {
@@ -59,7 +70,12 @@ func (h *Handler) GetRestaurants(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
-// GET /restaurant/{id} (ดูข้อมูลของร้านอาหาร)
+// @Summary ดูข้อมูลร้านอาหาร
+// @Tags    Restaurant
+// @Produce json
+// @Param   id path int true "Restaurant ID"
+// @Success 200 {object} Restaurant
+// @Router  /restaurant/{id} [get]
 func (h *Handler) GetRestaurantByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -80,7 +96,14 @@ func (h *Handler) GetRestaurantByID(c *gin.Context) {
 	c.JSON(http.StatusOK, rest)
 }
 
-// PUT /restaurant/order/confirm (ยืนยันออเดอร์)
+// @Summary  ยืนยันออเดอร์ (ฝั่งร้าน)
+// @Tags     Restaurant
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    body body ConfirmOrderRequest true "body"
+// @Success  200 {object} map[string]string
+// @Router   /restaurant/order/confirm [put]
 func (h *Handler) ConfirmOrder(c *gin.Context) {
 	var req ConfirmOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
