@@ -16,7 +16,14 @@ func NewHandler(s Service) *Handler {
 	return &Handler{service: s}
 }
 
-// POST /order (สร้างคำสั่งซื้อ)
+// @Summary  สร้างคำสั่งซื้อ
+// @Tags     Order
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    body body CreateOrderRequest true "body"
+// @Success  201 {object} CreateOrderResponse
+// @Router   /order [post]
 func (h *Handler) CreateOrder(c *gin.Context) {
 	// ดึง username จาก JWT ที่ AuthMiddleware set ไว้ใน context
 	usernameVal, exists := c.Get("username")
@@ -51,7 +58,14 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	})
 }
 
-// PUT /order/cancel (ลูกค้ายกเลิกออเดอร์)
+// @Summary  ลูกค้ายกเลิกออเดอร์
+// @Tags     Order
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    body body CancelOrderRequest true "body"
+// @Success  200 {object} map[string]string
+// @Router   /order/cancel [put]
 func (h *Handler) CancelOrder(c *gin.Context) {
 	// ดึง username จาก JWT
 	usernameVal, exists := c.Get("username")
@@ -90,7 +104,12 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Order cancelled successfully"})
 }
 
-// GET /order/{id} (ดูรายละเอียดออเดอร์)
+// @Summary ดูรายละเอียดออเดอร์
+// @Tags    Order
+// @Produce json
+// @Param   id path int true "Order ID"
+// @Success 200 {object} map[string]interface{}
+// @Router  /order/{id} [get]
 func (h *Handler) GetOrderByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -109,7 +128,15 @@ func (h *Handler) GetOrderByID(c *gin.Context) {
 	})
 }
 
-// PUT /order/{id}/status (อัปเดตสถานะออเดอร์ เช่น รับออเดอร์ กำลังทำ ทำเสร็จ กำลังจัดส่ง)
+// @Summary  อัปเดตสถานะออเดอร์
+// @Tags     Order
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    id path int true "Order ID"
+// @Param    body body UpdateOrderStatusRequest true "body"
+// @Success  200 {object} map[string]string
+// @Router   /order/{id}/status [put]
 func (h *Handler) UpdateOrderStatus(c *gin.Context) {
 	// แปลง order ID จาก URL param
 	idStr := c.Param("id")
@@ -152,7 +179,14 @@ func (h *Handler) UpdateOrderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully"})
 }
 
-// POST /order/{id}/assign-rider (มอบหมายไรเดอร์)
+// @Summary  มอบหมายไรเดอร์ให้ออเดอร์
+// @Tags     Rider
+// @Accept   json
+// @Produce  json
+// @Security BearerAuth
+// @Param    id path int true "Order ID"
+// @Success  200 {object} map[string]string
+// @Router   /order/{id}/assign-rider [post]
 func (h *Handler) AssignRider(c *gin.Context) {
 	orderID := c.Param("id")
 

@@ -14,6 +14,14 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+// @Summary Login
+// @Tags    Auth
+// @Accept  json
+// @Produce json
+// @Param   body body LoginRequest true "credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} map[string]string
+// @Router  /login [post]
 func (h *Handler) LoginHandler(c *gin.Context) {
 	var req LoginRequest
 

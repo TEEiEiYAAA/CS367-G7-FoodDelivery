@@ -9,11 +9,23 @@ import (
 	"CS367-G7-FoodDelivery/internal/middleware"
 	"CS367-G7-FoodDelivery/internal/order"
 	"CS367-G7-FoodDelivery/internal/restaurant"
-	
 
 	"github.com/gin-gonic/gin"
+
+	_ "CS367-G7-FoodDelivery/docs"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title           CS367 Food Delivery API
+// @version         1.0
+// @description     Food Delivery REST API for CS367-G7
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	config.InitDB()
 	db := config.DB
@@ -23,21 +35,18 @@ func main() {
 	menuRepo := menu.NewRepository(db)
 	orderRepo := order.NewRepository(db)
 	authRepo := auth.NewRepository(db)
-	
 
 	// Init Services
 	restSvc := restaurant.NewService(restRepo)
 	menuSvc := menu.NewService(menuRepo)
 	orderSvc := order.NewService(orderRepo)
 	authSvc := auth.NewService(authRepo)
-	
 
 	// Init Handlers
 	restHandler := restaurant.NewHandler(restSvc)
 	menuHandler := menu.NewHandler(menuSvc)
 	orderHandler := order.NewHandler(orderSvc)
 	authHandler := auth.NewHandler(authSvc)
-	
 
 	r := gin.Default()
 
@@ -64,6 +73,8 @@ func main() {
 
 	// Auth Route
 	r.POST("/login", authHandler.LoginHandler)
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	log.Println("Server running on :8080")
 	r.Run(":8080")
