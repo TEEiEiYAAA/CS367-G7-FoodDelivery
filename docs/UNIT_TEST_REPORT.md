@@ -17,7 +17,7 @@
 | **Auth Module** | 96.6% |
 | **Order Module** | 93.3% |
 
-**Total Overall Coverage: 84.8%**
+**Total Overall Coverage: 96.4%**
 
 ---
 
