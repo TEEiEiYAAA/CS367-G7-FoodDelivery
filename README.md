@@ -70,6 +70,16 @@ PUT / order / {id} / status (อัปเดตสถานะออเดอร
 POST /order/{id}/assign-rider (มอบหมายไรเดอร์) 
 
 ---
+
+## เอกสาร
+
+| | |
+|---|---|
+| 📖 วิธีติดตั้งและรันระบบ | [docs/SETUP.md](docs/SETUP.md) |
+| 🧪 Unit Test Report | [docs/UNIT_TEST_REPORT.md](docs/UNIT_TEST_REPORT.md) |
+| 📋 API Documentation | [docs/swagger.yaml](docs/swagger.yaml) |
+
+---
 ### Responsibility
 
 ## นางสาวธวัลหทัย เทียมทอง
